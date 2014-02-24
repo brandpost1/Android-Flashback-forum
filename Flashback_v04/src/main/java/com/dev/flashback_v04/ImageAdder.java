@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 /**
  * Created by Viktor on 2014-01-22.
+ * From: http://stackoverflow.com/a/4302199
  */
 public class ImageAdder {
 
