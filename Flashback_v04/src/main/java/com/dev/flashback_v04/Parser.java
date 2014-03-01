@@ -9,7 +9,6 @@ import android.widget.Toast;
 
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.special.CurrentThreadsAdapter;
-import com.google.android.gms.internal.ca;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -76,12 +75,8 @@ public class Parser {
         return haveConnectedWifi || haveConnectedMobile;
     }
 
-    private void aConnect(String url) {
-
-    }
-
-	private void connect(String site) throws NullPointerException, IOException {
-		Map<String, String> cookie = LoginHandler.getSessionCookie(mContext);
+    private void Connect(String url) throws NullPointerException, IOException  {
+        Map<String, String> cookie = LoginHandler.getSessionCookie(mContext);
 
         SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         int timeout;
@@ -93,31 +88,31 @@ public class Parser {
             e.printStackTrace();
         }
 
-        //currentSite = null;
-            if(haveNetworkConnection()) {
-                if(!cookie.isEmpty()) {
-                    try {
-                        connection = Jsoup.connect(site).timeout(timeout).cookies(cookie).maxBodySize(2097152);
-                        currentSite = connection.get();
-                    } catch (IOException e) {
-                        throw e;
-                    }
-                } else {
-                    try {
-                        connection = Jsoup.connect(site).timeout(timeout).maxBodySize(2097152);
-                        currentSite = connection.get();
-                    } catch (IOException e) {
-                        throw e;
-                    }
+        if(haveNetworkConnection()) {
+            // Check for cookie
+            if(!cookie.isEmpty()) {
+                // Connect with cookie
+                try {
+                    currentSite = LoginHandler.cookieConnect(url, cookie);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             } else {
-                throw new NullPointerException("[EXCEPTION] - No network connection.");
+                // Connect without cookie
+                try {
+                    currentSite = LoginHandler.basicConnect(url);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
-	}
+        } else {
+            throw new NullPointerException("[EXCEPTION] - No network connection.");
+        }
+    }
 
     public boolean getPreferences() {
         try {
-            connect("https://www.flashback.org/profile.php?do=editoptions");
+            Connect("https://www.flashback.org/profile.php?do=editoptions");
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -155,7 +150,7 @@ public class Parser {
 	public ArrayList<Forum> getCategoryContent(String url) {
         ArrayList<Forum> forumList = new ArrayList<Forum>();
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -203,7 +198,7 @@ public class Parser {
 		Document temp = currentSite;
 		int size = 0;
 
-        // TODO spara undan i SharedPreferences istället, och ta size därifrån.. enklare så.
+
         Element e = currentSite.select(".tborder tbody tr td.alignr.navcontrolbar div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").first();
 		if(e != null) {
 			String page = e.text();
@@ -221,7 +216,7 @@ public class Parser {
 		ArrayList<Thread> mThreads = new ArrayList<Thread>();
 
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -343,7 +338,7 @@ public class Parser {
 
     public int getThreadNumPages(String url) {
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -373,7 +368,7 @@ public class Parser {
 
     public boolean setUserId() {
         try {
-            connect("https://www.flashback.org/");
+            Connect("https://www.flashback.org/");
         } catch(NullPointerException e) {
             e.printStackTrace();
             return false;
@@ -406,7 +401,7 @@ public class Parser {
 	public ArrayList<Post> getThreadContent(String url) {
         ArrayList<Post> postArrayList = new ArrayList<Post>();
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -425,26 +420,17 @@ public class Parser {
 		String online;
 		String userProfileUrl;
 		String regdate;
+        String postUrl;
 		Elements message;
 
-        /*
-        String numPages = currentSite.select("td.vbmenu_control.smallfont2.delim").text();
-        String[] array = numPages.split(" ");
-        try {
-            numPages = array[3];
-        } catch (Exception e) {
-            numPages = "1";
-        }
-
-        System.out.println("Number of pages: " + numPages);
-        */
 		Elements posts = currentSite.select("div#posts div[id^=edit]");
 		for(Element post : posts) {
 			final Post newPost = new Post();
 
 			date = post.select("table tbody tr td.thead.post-date").text();
             date = date.substring(0, date.indexOf("#"));
-			orderNr = post.select("table tbody tr td.thead.post-date span").text();
+			orderNr = "#" + post.select("table tbody tr td.thead.post-date span a").text();
+            postUrl = post.select("table tbody tr td.thead.post-date span a").attr("abs:href");
 			author = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
 			membertype = post.select("table tbody tr[style^=vertical] td.alt2.post-left table").text();
 			online = post.select("table tbody tr[style^=vertical] td.alt2.post-left table tbody tr td div").attr("title");
@@ -461,6 +447,7 @@ public class Parser {
 			newPost.setAvatarurl(avatarurl);
 			newPost.setRegdate(regdate);
 			newPost.setNumposts(numposts);
+            newPost.setPostUrl(postUrl);
 
 			message = post.select("table tbody tr[style^=vertical] td.alt1.post-right div[id^=post_message]");
 
@@ -809,7 +796,7 @@ public class Parser {
 
         ArrayList<Item_CurrentThreads> currentList = new ArrayList<Item_CurrentThreads>();
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -862,11 +849,11 @@ public class Parser {
         return currentList;
     }
 
-    public ArrayList<Item_CurrentThreads> getNew(String url) {
+    public ArrayList<Item_CurrentThreads> getNewThreads(String url) {
 
         ArrayList<Item_CurrentThreads> newList = new ArrayList<Item_CurrentThreads>();
         try {
-            connect(url);
+            Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg("No network connection available.");
@@ -905,6 +892,12 @@ public class Parser {
             newList.add(newThread);
         }
         return newList;
+    }
+
+    public void getPrivateMessages(String url) {
+        // Get categories
+        // form[method=post] table.tborder.p2-4 tbody[id]
+
     }
 
 }

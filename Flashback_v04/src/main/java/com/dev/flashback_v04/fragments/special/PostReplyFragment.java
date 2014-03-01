@@ -10,17 +10,13 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.asynctasks.special.PostReplyTask;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.HashMap;
 
 /**
@@ -31,7 +27,7 @@ public class PostReplyFragment extends Fragment {
     private String threadUrl = "";
     private int currentPage = 0;
 
-    TextView messageArea;
+    EditText messageArea;
 
     public PostReplyFragment() {
 
@@ -45,7 +41,7 @@ public class PostReplyFragment extends Fragment {
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.postreplymenu, menu);
+        inflater.inflate(R.menu.postreply_menu, menu);
 
         super.onCreateOptionsMenu(menu, inflater);
     }
@@ -61,20 +57,24 @@ public class PostReplyFragment extends Fragment {
 
                 PostReplyTask replyTask = new PostReplyTask(getActivity(), args);
 
-                // Retrieve message and send
+                // Retrieve message
                 String message = messageArea.getText().toString();
                 try {
+                    /*
+                    // Save draft
                     PreferenceManager.getDefaultSharedPreferences(getActivity())
                             .edit()
-                            .putString("LastMessage", messageArea.getText().toString())
+                            .putString("LastMessage", message)
                             .commit();
+                    */
+                    // Send reply
                     replyTask.execute(message);
                 } catch(IllegalStateException e) {
-                    Toast.makeText(getActivity(), "Kan inte posta igen. Spara ditt meddelande och försök igen.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "Spara ditt meddelande och försök igen.", Toast.LENGTH_SHORT).show();
                     e.printStackTrace();
                 }
                 break;
-            case R.id.newreply_load_message:
+            case R.id.newreply_load_draft:
                 String lastMessage = PreferenceManager.getDefaultSharedPreferences(getActivity())
                         .getString("LastMessage", "");
 
@@ -82,7 +82,7 @@ public class PostReplyFragment extends Fragment {
 
                 Toast.makeText(getActivity(), "Message loaded", Toast.LENGTH_SHORT).show();
                 break;
-            case R.id.newreply_save_message:
+            case R.id.newreply_save_draft:
                 PreferenceManager.getDefaultSharedPreferences(getActivity())
                         .edit()
                         .putString("LastMessage", messageArea.getText().toString())
@@ -97,7 +97,8 @@ public class PostReplyFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.newpost, container, false);
-        messageArea = (TextView)view.findViewById(R.id.reply_textbox);
+        TextView replyHeader = (TextView)view.findViewById(R.id.newpost_header);
+        messageArea = (EditText)view.findViewById(R.id.newpost_reply_textbox);
 
         String quote = getArguments().getString("Quote");
         String author = getArguments().getString("Author");
@@ -115,6 +116,9 @@ public class PostReplyFragment extends Fragment {
                 messageArea.append("\n\n");
             }
         }
+
+        // Set threadname as header
+        replyHeader.setText(getArguments().getString("ThreadName"));
 
         // Add proper tags around quotes
         if(quote != null && author != null) {

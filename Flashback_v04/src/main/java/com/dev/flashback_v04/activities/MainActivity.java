@@ -31,11 +31,11 @@ import com.dev.flashback_v04.adapters.DrawerAdapter;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
 import com.dev.flashback_v04.asynctasks.LoginTask;
 import com.dev.flashback_v04.fragments.WrapperFragment;
+import com.dev.flashback_v04.fragments.special.CreateThreadFragment;
 import com.dev.flashback_v04.fragments.special.CurrentThreadsFragment;
+import com.dev.flashback_v04.fragments.special.NewPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewThreadsFragment;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
-import com.dev.flashback_v04.fragments.special.SearchFragment;
-import com.dev.flashback_v04.fragments.special.SettingsFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 import com.dev.flashback_v04.interfaces.UpdateForum;
 import com.dev.flashback_v04.interfaces.UpdateStuff;
@@ -70,6 +70,9 @@ class PollingThread extends Thread {
                 String bundletype = bundle.getString("BundleType");
                 if(bundletype.equals("UpdateThread")) {
                     mContext.updateThread(bundle);
+                }
+                if(bundletype.equals("ThreadCreated")) {
+                    mContext.updateForum(bundle);
                 }
 
             }
@@ -376,6 +379,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 int i = (int)adapterView.getItemIdAtPosition(position);
+                int backstackcount;
                 switch(i) {
                     case 0:
                         // Go back to start
@@ -385,7 +389,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         // Aktuella ämnen
                     case 1:
                         CurrentThreadsFragment fragment = new CurrentThreadsFragment();
-                        int backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+                        backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
                         // If opening "Aktuella ämnen" while in "Aktuella ämnen", pop back stack and remove old "Aktuella ämnen" from stack.
                         // Also if opening "Aktuella ämnen" while in a thread opened from "Aktuella ämnen".
@@ -411,12 +415,12 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         break;
                     case 2:
                         NewThreadsFragment newThreadsFragment = new NewThreadsFragment();
-                        int countbackstack = getSupportFragmentManager().getBackStackEntryCount();
+                        backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
                         // Same as above
                         try {
-                            if(getSupportFragmentManager().getBackStackEntryAt(countbackstack-1).getName().equals("NewSubjects")
-                                    || getSupportFragmentManager().getBackStackEntryAt(countbackstack-2).getName().equals("NewSubjects")) {
+                            if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("NewSubjects")
+                                    || getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("NewSubjects")) {
                                 getSupportFragmentManager().popBackStack("NewSubjects", FragmentManager.POP_BACK_STACK_INCLUSIVE);
                             }
                         } catch (Exception e) {
@@ -434,16 +438,41 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 3:
-                        Toast.makeText(getBaseContext(), "Ska implementeras.", Toast.LENGTH_SHORT).show();
+
+                        NewPostsFragment newPostsFragment = new NewPostsFragment();
+                        backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+                        // Same as above
+                        try {
+                            if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("NewPosts")
+                                    || getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("NewPosts")) {
+                                getSupportFragmentManager().popBackStack("NewPosts", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                            }
+                        } catch (Exception e) {
+
+                        }
+
+                        try {
+                            fragmentManager.beginTransaction()
+                                    .addToBackStack("NewPosts")
+                                    .replace(R.id.fragmentcontainer, newPostsFragment)
+                                    .commit();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 4:
-                        Toast.makeText(getBaseContext(), "Ska implementeras.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getBaseContext(), "4.", Toast.LENGTH_SHORT).show();
+                        // Hidden atm
                         break;
                     case 5:
-                        Toast.makeText(getBaseContext(), "Ska implementeras.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getBaseContext(), "5.", Toast.LENGTH_SHORT).show();
+                        // Hidden atm
                         break;
                     case 6:
                         Toast.makeText(getBaseContext(), "Under uppbyggnad.", Toast.LENGTH_SHORT).show();
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
                         /*
                         SearchFragment searchFragment = new SearchFragment();
                         try {
@@ -569,7 +598,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
 
     /*
-        From ShowPostsFragment
+        From ShowPostsFragment etc
         itemId is for example, R.id.thread_new_reply
     */
     @Override
@@ -588,7 +617,16 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 }
                 break;
             case R.id.forum_new_thread:
-                Toast.makeText(this, "Funktionen ej implementerad än", Toast.LENGTH_SHORT).show();
+                CreateThreadFragment newthread = new CreateThreadFragment();
+                newthread.setArguments(args);
+                try {
+                    fragmentManager.beginTransaction()
+                            .addToBackStack("NewPost")
+                            .replace(R.id.fragmentcontainer, newthread)
+                            .commit();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 break;
             case R.id.gotolastpage:
                 openThread(args.getString("Url"), args.getInt("NumPages"), args.getInt("NumPages"), args.getString("ThreadName"));
@@ -605,38 +643,44 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
     }
 
 
-    // Callback-function to reload the current thread
     // Bundle should include:
     // Url, number of pages, and current page
     @Override
-    public void updateThread(Bundle o) {
-        // Pops back to the "Thread-view" of the current forum
-        try{
-            getSupportFragmentManager().popBackStack("Threads", FragmentManager.POP_BACK_STACK_INCLUSIVE);
-            // Retrieve bundle info
-            String url = o.getString("Url");
-            int position = o.getInt("CurrentPage");
-            int numpages = o.getInt("NumPages");
-            String threadname = o.getString("ThreadName");
-            // Reload thread
-            openThread(url,numpages,position, threadname);
-        } catch (IllegalStateException e) {
-            Toast.makeText(this, "Something happened. Try again.", Toast.LENGTH_SHORT).show();
-        }
-
+    public void updateThread(final Bundle o) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Pops back to the "Thread-view" of the current forum
+                getSupportFragmentManager().popBackStack("Threads", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                // Retrieve bundle info
+                String url = o.getString("Url");
+                int position = o.getInt("CurrentPage");
+                int numpages = o.getInt("NumPages");
+                String threadname = o.getString("ThreadName");
+                // Reload thread
+                openThread(url,numpages,position, threadname);
+            }
+        });
     }
 
     @Override
-    public void updateForum(Bundle o) {
-        // Pop back to forums view
-        getSupportFragmentManager().popBackStack();
+    public void updateForum(final Bundle o) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Pop back two steps
+                FragmentManager f = getSupportFragmentManager();
+                getSupportFragmentManager().popBackStack("Forums", FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
-        // Retrieve stuff in bundle
-        String url = o.getString("Url");
-        String forumname = o.getString("ForumName");
-        int numpages = o.getInt("NumPages");
+                // Retrieve stuff in bundle
+                String url = o.getString("ForumUrl");
+                String forumname = o.getString("ForumName");
+                int numpages = o.getInt("NumPages");
 
-        // Reopen the forum.
-        openForum(url, numpages, forumname);
+                // Reopen the forum.
+                openForum(url, numpages, forumname);
+            }
+        });
+
     }
 }

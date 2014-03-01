@@ -32,11 +32,9 @@ public class UpdateThreadTask extends AsyncTask<String, String, Integer> {
 		super.onPostExecute(size);
         bundle.putInt("NumPages", size);
         bundle.putString("BundleType", "UpdateThread");
-        try {
-            ((MainActivity)mCallback).updateTaskQueue.put(bundle);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+
+        ((MainActivity)mCallback).updateThread(bundle);
+
     }
 
     @Override

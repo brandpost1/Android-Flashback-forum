@@ -24,7 +24,6 @@ import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 public class NewThreadsFragment extends ListFragment {
 
     private NewThreadsAdapter mAdapter;
-    OnOptionSelectedListener mListener;
     TextView header;
 
     @Override
@@ -53,11 +52,6 @@ public class NewThreadsFragment extends ListFragment {
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        try{
-            mListener = (OnOptionSelectedListener) activity;
-        } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString() + " must implement OnOptionSelectedListener");
-        }
     }
 
     @Override

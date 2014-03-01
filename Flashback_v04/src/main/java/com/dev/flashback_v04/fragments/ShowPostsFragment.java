@@ -1,14 +1,16 @@
 package com.dev.flashback_v04.fragments;
 
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.os.Build;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
-import android.text.Layout;
+import android.support.v4.view.MenuItemCompat;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -17,7 +19,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.NumberPicker;
@@ -31,10 +32,7 @@ import com.dev.flashback_v04.asynctasks.UpdateThreadTask;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
 import com.dev.flashback_v04.interfaces.UpdateStuff;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import android.support.v7.widget.ShareActionProvider;
 
 /**
  * Created by Viktor on 2013-06-25.
@@ -46,7 +44,9 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 	int selected_page_base;
     int numPages;
 	String thread_url = null;
-	String thread_url_page = null;
+	String thread_url_withpagenr = null;
+
+    ShareActionProvider mShare;
 
     Activity mActivity;
     // Activity must implement this
@@ -75,11 +75,32 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-
         // Show number of pages in thread
         //inflater.inflate(R.menu.show_pages, menu);
         // Show updatebutton
-        inflater.inflate(R.menu.thread_refresh, menu);
+        inflater.inflate(R.menu.thread_default_menu, menu);
+
+
+        SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        boolean shareActivated = appPrefs.getBoolean("thread_sharebutton", false);
+
+        // Setup share button if activated in Preferences
+        if(shareActivated) {
+            // Inflate menuitem
+            inflater.inflate(R.menu.share, menu);
+
+            //
+            MenuItem shareButton = menu.findItem(R.id.thread_share);
+            mShare = (ShareActionProvider) MenuItemCompat.getActionProvider(shareButton);
+
+            // Intent for share button
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setAction(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_TEXT, thread_url_withpagenr);
+            mShare.setShareIntent(shareIntent);
+        }
+
         // If logged in, show new reply button in thread.
         try {
             if(LoginHandler.loggedIn(mActivity) && mAdapter.getCount() > 0)
@@ -97,13 +118,13 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
             selected_page = getArguments().getInt("index") + 1;
             selected_page_base = getArguments().getInt("index");
             thread_url = getArguments().getString("Url");
-            thread_url_page = thread_url.concat("p"+selected_page);
+            thread_url_withpagenr = thread_url.concat("p"+selected_page);
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
 
         if(mAdapter == null) {		// Don't know if this is needed
-            mAdapter = new ShowPostsAdapter(mActivity,this, thread_url_page);
+            mAdapter = new ShowPostsAdapter(mActivity,this, thread_url_withpagenr);
             setListAdapter(mAdapter);
         }
         super.onCreate(savedInstanceState);
@@ -128,6 +149,12 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                 updatebundle.putString("ThreadName", getArguments().getString("ThreadName"));
                 UpdateThreadTask updateThreadTask = new UpdateThreadTask(mActivity, updatebundle);
                 updateThreadTask.execute();
+                break;
+            case R.id.thread_openinbrowser:
+                String url = thread_url_withpagenr;
+                Intent openbrowserIntent = new Intent(Intent.ACTION_VIEW);
+                openbrowserIntent.setData(Uri.parse(url));
+                startActivity(openbrowserIntent);
                 break;
             case R.id.thread_gotopage:
                 LayoutInflater inflater = mActivity.getLayoutInflater();
@@ -276,6 +303,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
     public void sendQuote(Bundle b) {
         b.putString("Url", thread_url);
         b.putInt("CurrentPage", selected_page_base);
+        b.putString("ThreadName", getArguments().getString("ThreadName"));
 
         mListener.onOptionSelected(R.id.thread_new_reply, b);
     }

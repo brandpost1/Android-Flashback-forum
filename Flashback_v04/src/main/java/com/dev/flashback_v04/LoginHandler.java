@@ -4,57 +4,169 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.widget.Toast;
 
+import com.dev.flashback_v04.interfaces.RedirectCallback;
+
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+
+import org.apache.http.client.protocol.ClientContext;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+
+import java.net.HttpURLConnection;
+
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Created by Viktor on 2013-06-24.
  */
 public class LoginHandler {
 
-    //TODO: Replace JSoup here
+    public static Document basicConnect(String site) throws Exception {
+        URL url = new URL(site);
+        Document current = null;
+        HttpsURLConnection connection = null;
 
-	public static boolean login(String userName, String password, Context context) {
-		Connection.Response response = null;
-        Map<String, String> mCookies;
+        connection = (HttpsURLConnection)url.openConnection();
 
-		try {
-			response = Jsoup.connect("https://www.flashback.org/login.php")
-					.data("vb_login_username", userName,
-                            "cookieuser", "1",
-                            "vb_login_password", password,
-                            "url", "",
-                            "vb_login_md5password", "",
-                            "vb_login_md5password_utf", "",
-                            "do", "login")
-					.userAgent("Mozilla")
-					.method(Connection.Method.POST)
-					.execute();
-			if(response.hasCookie("vbscanpassword")) {
-				mCookies = response.cookies();
-				setSessionCookie(mCookies, context);
-                getPreferences(context);
-				return true;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-        
-		return false;
-	}
+        InputStream response;
+        response = connection.getInputStream();
 
+        current = Jsoup.parse(response, null, site);
+        response.close();
+
+        return current;
+    }
+    public static Document cookieConnect(String site, Map<String, String> cookie) throws Exception{
+        URL url = new URL(site);
+        Document current = null;
+        HttpsURLConnection connection = null;
+
+        connection = (HttpsURLConnection)url.openConnection();
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(3000);
+        connection.setReadTimeout(3000);
+
+        // Get sessioncookie
+        Map<String, String> cookies = cookie;
+
+        // Convert cookie to correct format
+        String cookiestring = cookies.toString().trim().replace("{", "").replace("}", "").replace(",", ";");
+
+        // Some headers
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+        connection.setRequestProperty("Cookie", cookiestring);
+
+        // Make request
+        InputStream response;
+        response = connection.getInputStream();
+
+        // Parse response
+        current = Jsoup.parse(response, null, site);
+
+        response.close();
+
+        return current;
+    }
+
+    public static boolean login(String userName, String password, Context context) throws Exception{
+        URL url = null;
+        HttpURLConnection connection = null;
+        Map<String, String> mCookies = new HashMap<String, String>();
+        url = new URL("https://www.flashback.org/login.php");
+
+        String parameters = "";
+
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("vb_login_username", userName);
+        params.put("cookieuser", "1");
+        params.put("vb_login_password", password);
+        params.put("url", "/login.php");
+        params.put("vb_login_md5password", "");
+        params.put("vb_login_md5password_utf", "");
+        params.put("do", "login");
+
+        int count = 0;
+        for(Map.Entry<String,String> entry : params.entrySet()) {
+            parameters += entry.getKey() + "=" + entry.getValue();
+            if(count < params.size() -1) {
+                parameters += "&";
+            }
+            count++;
+        }
+
+
+        connection = (HttpsURLConnection)url.openConnection();
+        connection.setInstanceFollowRedirects(false);
+        connection.setConnectTimeout(3000);
+        connection.setReadTimeout(3000);
+        connection.setUseCaches(false);
+        connection.setDoOutput(true);
+        connection.setDoInput(true);
+        connection.setRequestMethod("POST");
+
+        // Some headers
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        connection.setRequestProperty("Origin", "https://www.flashback.org");
+        connection.setRequestProperty("Host", "www.flashback.org");
+        connection.setRequestProperty("Referer", "https://www.flashback.org/");
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+
+        // Send post request
+        DataOutputStream out = new DataOutputStream(connection.getOutputStream());
+        out.writeBytes(parameters);
+        out.flush();
+        out.close();
+
+        // Get cookies from response
+        List<String> cookies = connection.getHeaderFields().get("Set-Cookie");
+
+        // Store in Map
+        for (String cookie : cookies) {
+            String key;
+            String value;
+            String temp = cookie.split(";", 2)[0];
+            key = temp.split("=")[0];
+            value = temp.split("=")[1];
+            mCookies.put(key, value);
+        }
+
+        // Check if logged in by looking for a specific cookie
+        if(mCookies.containsKey("vbscanpassword")) {
+            setSessionCookie(mCookies, context);
+            getPreferences(context);
+            return true;
+        }
+        return false;
+    }
+
+    // Get some preferences for the logged in user
     private static void getPreferences(Context context) {
         Parser p = new Parser(context);
         p.getPreferences();
@@ -117,7 +229,7 @@ public class LoginHandler {
      * @throws IOException
      * Om något hände när svaret skickades, så som anslutningsproblem.
      */
-    public static boolean testPost(String url, String message, Context context) throws IOException {
+    public static boolean postReply(String url, String message, Context context) throws IOException {
         if(loggedIn(context)) {
             HttpClient client = new DefaultHttpClient();
             HttpPost post = new HttpPost("https://www.flashback.org/newreply.php");
@@ -138,7 +250,7 @@ public class LoginHandler {
 
             BasicNameValuePair[] params = {
                     new BasicNameValuePair("message", message),
-                    new BasicNameValuePair("wysiwyg", "1"),
+                    new BasicNameValuePair("wysiwyg", "0"),
                     new BasicNameValuePair("s", ""),
                     new BasicNameValuePair("do", "postreply"),
                     new BasicNameValuePair("t", threadId),
@@ -154,19 +266,24 @@ public class LoginHandler {
                     new BasicNameValuePair("stoken", ""),
             };
 
+
+            // Add some headers
             post.addHeader("Content-Type", "application/x-www-form-urlencoded");
             post.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
             post.addHeader("Cookie", mCookies);
 
-
+            // Add parameters to post-object
             try {
                 post.setEntity(new UrlEncodedFormEntity(Arrays.asList(params), "ISO-8859-1"));
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
 
+            // To:https://www.flashback.org/showthread.php?p=47728039&posted=1#p47728039 with status: 301 Show explanation HTTP/1.1 301 Moved Permanently
+            // "Location:"
             try {
                 HttpResponse resp = client.execute(post);
+                //String body = EntityUtils.toString(resp.getEntity(), "UTF-8");
                 if(resp.getStatusLine().getStatusCode() == 200) {
                     return true;
                 }
@@ -181,37 +298,215 @@ public class LoginHandler {
         }
     }
 
-	public static void postThread(String inForum, Context context) throws IOException {
-		Connection.Response response = null;
-		Map<String, String> cookies = getSessionCookie(context);
+    public static boolean postNewThread(RedirectCallback callback, String inForum, String subject, String message, Context context) throws IOException{
+        if(loggedIn(context)) {
+            URL url = null;
+            HttpsURLConnection connection = null;
 
-		try {
-			response = Jsoup.connect("https://www.flashback.org/newthread.php")
-					.data	(
-							"subject", "",
-							"message", "",
-							"wysiwyg", "1",
-							"f", "*forumid*",
-							"do", "postthread",
-							"posthash", "",
-							"poststarttime", "",
-							"loggedinuser", "",
-							"sbutton", "Skicka nytt ämne",
-							"signature", "1",
-							"parseurl", "1",
-							"emailupdate", "9999",   // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
-							//"disablesmilies", "1", //Optional 1 = disable
-							"stoken", ""
-					)
+            try {
+                url = new URL("https://www.flashback.org/newthread.php");
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+            connection = (HttpsURLConnection)url.openConnection();
+            connection.setInstanceFollowRedirects(false);
 
-					.cookies(cookies)
-					.userAgent("Mozilla")
-					.method(Connection.Method.POST)
-					.execute();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+            connection.setDoOutput(true);
+
+            try {
+                connection.setRequestMethod("POST");
+            } catch (ProtocolException e) {
+                e.printStackTrace();
+            }
+
+            // Get sessioncookie
+            Map<String, String> cookies = getSessionCookie(context);
+
+            // Convert cookie to correct format
+            String cookiestring = cookies.toString().trim().replace("{", "").replace("}", "").replace(",", ";");
+
+            // Get user-id from sharedpreferences
+            String userId = Integer.toString(SharedPrefs.getPreference(context, "user", "ID"));
+
+
+            String forumId = inForum;
+            String postSubject = subject;
+            String postMessage = message;
+
+            // Some headers for first request
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            connection.setRequestProperty("Cookie", cookiestring);
+
+            // Get cookie from response, since apparently it's needed in a second request
+            List<String> cookielist = connection.getHeaderFields().get("Set-Cookie");
+
+            // Get cookievalue
+            String hash = cookielist.get(0).split(";", 2)[0].split("=")[1];
+
+            // Establish a new connection
+            connection = (HttpsURLConnection)url.openConnection();
+            connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setInstanceFollowRedirects(false);
+
+            // Some headers for the second connection.. Same as first
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            connection.setRequestProperty("Cookie", cookiestring);
+
+            // Form parameters
+            Map<String, String> params = new HashMap<String, String>();
+            params.put("subject", postSubject);
+            params.put("message", postMessage);
+            params.put("wysiwyg", "0");
+            params.put("f", forumId);
+            params.put("do", "postthread");
+            params.put("posthash", "");
+            params.put("poststarttime", "");
+            params.put("loggedinuser", userId);
+            params.put("s", hash);
+            params.put("sbutton", "Skicka nytt ämne");
+            params.put("signature", "1");
+            params.put("parseurl", "1");
+            params.put("emailupdate", "9999");  // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
+            params.put("disablesmilies", "1"); //Optional 1 = disable)
+            params.put("folderid", "0");
+            params.put("stoken", "");
+
+            // Convert parameters to single querystring
+            String parameters = "";
+            int count = 0;
+            for(Map.Entry<String,String> entry : params.entrySet()) {
+                parameters += entry.getKey() + "=" + entry.getValue();
+                if(count < params.size() -1) {
+                    parameters += "&";
+                }
+                count++;
+            }
+
+            // Send post request
+            DataOutputStream out = new DataOutputStream(connection.getOutputStream());
+            out.writeBytes(parameters);
+            out.flush();
+            out.close();
+
+            int responseCode = connection.getResponseCode();
+            if(responseCode == HttpURLConnection.HTTP_MOVED_PERM) {
+                // Probably successful
+                String newLocation = connection.getHeaderField("Location");
+                System.out.println(newLocation);
+                // Use newLocation to open the new thread
+                callback.setRedirect(newLocation);
+                return true;
+            }
+
+            InputStream response = connection.getInputStream();
+
+            if(response != null) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(response));
+                try {
+                    for (String line; (line = reader.readLine()) != null;) {
+                        System.out.println(line);
+                    }
+                } finally {
+                    try { reader.close(); } catch (IOException logOrIgnore) {}
+                }
+            }
+
+
+            return false;
+        }
+        return false;
+    }
+
+	public static boolean postThread(String inForum, String subject, String message, Context context) throws IOException {
+		if(loggedIn(context)) {
+
+            HttpClient client = new DefaultHttpClient();
+            BasicCookieStore cookieStore = new BasicCookieStore();
+            HttpContext localContext = new BasicHttpContext();
+
+            localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
+
+            HttpPost post = new HttpPost("https://www.flashback.org/newthread.php");
+
+            // Get sessioncookie
+            Map<String, String> cookies = getSessionCookie(context);
+
+            // Convert cookie to correct format
+            String mCookies = cookies.toString().trim().replace("{", "").replace("}", "").replace(",", ";");
+
+            // Get user-id from sharedpreferences
+            String userId = Integer.toString(SharedPrefs.getPreference(context, "user", "ID"));
+
+            String forumId = inForum;
+            String postSubject = subject;
+            String postMessage = message;
+
+            String hash = cookies.get("vbscansessionhash");
+
+
+
+            // Form parameters
+            BasicNameValuePair[] params = {
+                    new BasicNameValuePair("subject", postSubject),
+                    new BasicNameValuePair("message", postMessage),
+                    new BasicNameValuePair("wysiwyg", "0"),
+                    new BasicNameValuePair("f", forumId),
+                    new BasicNameValuePair("do", "postthread"),
+                    new BasicNameValuePair("posthash", ""),
+                    new BasicNameValuePair("poststarttime", ""),
+                    new BasicNameValuePair("loggedinuser", userId),
+                    new BasicNameValuePair("s", hash),
+                    new BasicNameValuePair("sbutton", "Skicka nytt ämne"),
+                    new BasicNameValuePair("signature", "1"),
+                    new BasicNameValuePair("parseurl", "1"),
+                    new BasicNameValuePair("emailupdate", "9999"),   // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
+                    //new BasicNameValuePair("disablesmilies", "1", //Optional 1 = disable)
+                    new BasicNameValuePair("folderid", "0"),
+                    new BasicNameValuePair("stoken", "")
+            };
+
+
+            // Add some headers
+            post.addHeader("Content-Type", "application/x-www-form-urlencoded");
+            post.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            post.addHeader("Cookie", mCookies);
+            post.addHeader("Accept-Language", "sv-SE,sv;q=0.8,en-US;q=0.6,en;q=0.4");
+            post.addHeader("Origin", "https://www.flashback.org");
+            post.addHeader("Referer", "https://www.flashback.org/newthread.php");
+            post.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+
+            // Add parameters to post-object
+            try {
+                post.setEntity(new UrlEncodedFormEntity(Arrays.asList(params), "ISO-8859-1"));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+
+            // Attempt to post thread
+            try {
+                HttpResponse resp;
+                resp = client.execute(post, localContext);
+                String body = EntityUtils.toString(resp.getEntity(), "UTF-8");
+                if(resp.getStatusLine().getStatusCode() == 200) {
+                    return true;
+                }
+
+                return false;
+            } catch (Exception e) {
+                // Connection error
+                e.printStackTrace();
+                throw new IOException("There was a problem with the connection.");
+            }
+        } else {
+            return false;
+        }
 	}
+
+
 
 }

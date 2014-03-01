@@ -22,8 +22,8 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
     Context mContext;
     Parser mParser;
 
-    private ProgressDialog dialog;
-    private UpdateStuff mCallback;
+    ProgressDialog dialog;
+    UpdateStuff mCallback;
     int returnedPages = 1;
     String threadUrl = "";
     String message = "";
@@ -49,7 +49,7 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
         try {
             // Url, Message, Context
             try {
-                success = LoginHandler.testPost(threadUrl, message, mContext);
+                success = LoginHandler.postReply(threadUrl, message, mContext);
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;
@@ -84,9 +84,9 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
     }
 
     @Override
-    protected void onPostExecute(Boolean bool) {
-        super.onPostExecute(bool);
-        if(bool == true) {
+    protected void onPostExecute(Boolean success) {
+        super.onPostExecute(success);
+        if(success) {
             Bundle args = new Bundle();
             args.putString("BundleType", "UpdateThread");
             args.putInt("NumPages", returnedPages);
@@ -94,7 +94,7 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
             args.putInt("CurrentPage", currentPage);
             args.putString("ThreadName", threadName);
 
-            Toast.makeText(mContext, "Svar skickat! Meddelandet sparat.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mContext, "Svar skickat!", Toast.LENGTH_SHORT).show();
 
             try {
                 ((MainActivity)mCallback).updateTaskQueue.put(args);
@@ -102,7 +102,7 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
                 e.printStackTrace();
             }
         } else {
-            Toast.makeText(mContext, "Kunde inte skicka svar. Ditt meddelande har sparats dock!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mContext, "Något hände.. Försök igen..", Toast.LENGTH_SHORT).show();
 
             // Save message if failed
             PreferenceManager.getDefaultSharedPreferences(mContext)

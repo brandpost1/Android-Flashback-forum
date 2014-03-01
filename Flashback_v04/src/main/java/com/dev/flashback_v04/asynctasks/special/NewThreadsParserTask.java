@@ -2,7 +2,6 @@ package com.dev.flashback_v04.asynctasks.special;
 
 import android.content.Context;
 import android.os.AsyncTask;
-import android.widget.Toast;
 
 import com.dev.flashback_v04.Item_CurrentThreads;
 import com.dev.flashback_v04.Parser;
@@ -31,7 +30,7 @@ public class NewThreadsParserTask extends AsyncTask<String, String, ArrayList<It
     @Override
     protected ArrayList<Item_CurrentThreads> doInBackground(String... strings) {
         try {
-            mThreads = mParser.getNew(strings[0]);
+            mThreads = mParser.getNewThreads(strings[0]);
         } catch (Exception e) {
             e.printStackTrace();
         }

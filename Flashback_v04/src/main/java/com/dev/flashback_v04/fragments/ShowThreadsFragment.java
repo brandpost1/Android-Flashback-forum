@@ -31,7 +31,9 @@ public class ShowThreadsFragment extends ListFragment {
 	ShowThreadsAdapter mAdapter;
 	int selected_page;
 	String forum_url = null;
+    String base_url;
     String forum_name;
+    String forum_id;
     TextView header;
     TextView headerright;
     Thread headerupdate;
@@ -58,11 +60,11 @@ public class ShowThreadsFragment extends ListFragment {
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         this.menu = menu;
         // Show updatebutton
-        inflater.inflate(R.menu.thread_refresh, menu);
+        inflater.inflate(R.menu.forum_default_menu, menu);
 
         try {
             if(LoginHandler.loggedIn(mActivity) && mAdapter.getThreads().size() > 0)
-                inflater.inflate(R.menu.forum, menu);
+                inflater.inflate(R.menu.forum_loggedin_menu, menu);
         } catch(NullPointerException e) {
             e.printStackTrace();
         }
@@ -76,6 +78,9 @@ public class ShowThreadsFragment extends ListFragment {
         switch (item.getItemId()) {
             case R.id.forum_new_thread:
                 Bundle args = new Bundle();
+                args.putString("ForumName", forum_name);
+                args.putString("ForumId", forum_id);
+                args.putString("ForumUrl", base_url);
                 mListener.onOptionSelected(item.getItemId(), args);
                 break;
             case R.id.forum_update:
@@ -96,7 +101,9 @@ public class ShowThreadsFragment extends ListFragment {
     public void onCreate(Bundle savedInstanceState) {
 
         try {
+            base_url = getArguments().getString("Url");
             forum_url = getArguments().getString("Url");
+            forum_id = forum_url.split("/f", 2)[1];
             forum_name = getArguments().getString("ForumName");
             // +1 Because the pages start their index at 1. 0 works, but it just shows the first page of threads, so if you scrolled the next page would be the same as the first.
             selected_page = getArguments().getInt("index") + 1;
@@ -159,6 +166,7 @@ public class ShowThreadsFragment extends ListFragment {
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerright = (TextView)view.findViewById(R.id.headerright);
+        final String numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
 
         if(mAdapter != null) {
             if(!mAdapter.updatedthreads) {
@@ -179,7 +187,8 @@ public class ShowThreadsFragment extends ListFragment {
                                     if(mAdapter.getThreads().isEmpty()) {
                                         headerright.setText("");
                                     } else {
-                                        headerright.setText("Sida "+ selected_page +" av ??");
+
+                                        headerright.setText("Sida "+ selected_page +" av "+ numpages);
                                     }
                                 }
                             });
@@ -194,7 +203,7 @@ public class ShowThreadsFragment extends ListFragment {
                 if(mAdapter.getThreads().isEmpty()) {
                     headerright.setText("");
                 } else {
-                    headerright.setText("Sida "+ selected_page +" av ??");
+                    headerright.setText("Sida "+ selected_page +" av " + numpages);
                 }
             }
         }

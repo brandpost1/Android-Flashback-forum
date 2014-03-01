@@ -1,10 +1,13 @@
 package com.dev.flashback_v04.adapters;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.text.Html;
 import android.text.InputType;
 import android.text.Spannable;
@@ -168,6 +171,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         TextView posts = null;
         TextView regdate = null;
         ImageView avatar= null;
+        ImageView sharePost = null;
         // Message
         TextView message = null;
         // Quote
@@ -235,7 +239,26 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 posts = (TextView)view.findViewById(R.id.user_posts_count);
                 regdate = (TextView)view.findViewById(R.id.user_reg_date);
                 avatar = (ImageView)view.findViewById(R.id.user_avatar);
+                sharePost = (ImageView)view.findViewById(R.id.share_post);
 
+                // Should the "Share"-button show?
+                SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+                boolean sharePostEnabled = mPrefs.getBoolean("post_sharebutton", false);
+                if(!sharePostEnabled) {
+                    sharePost.setVisibility(View.GONE);
+                }
+                // Set a clicklistener to the sharebutton
+                sharePost.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getPostUrl());
+                        mContext.startActivity(Intent.createChooser(shareIntent, "Dela med"));
+                    }
+                });
+
+                // Don't remember..
                 if(rows.get(position)[2] != null) {
                     author.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getAuthor());
                     usertype.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getMembertype());
@@ -344,11 +367,13 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 plusQuote = (CheckBox)view.findViewById(R.id.plusquote);
                 reportPost = (ImageView)view.findViewById(R.id.report);
 
+                // Show some Logged-in-only buttons
                 if(!LoginHandler.loggedIn(mContext)) {
                     quotePost.setVisibility(View.GONE);
                     plusQuote.setVisibility(View.GONE);
                     reportPost.setVisibility(View.GONE);
                 }
+
                 if(rows.get(position)[1] != null) {
 
                     final String sendnumber = rows.get(position)[4];
@@ -399,7 +424,6 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                         public void onCheckedChanged(CompoundButton button, boolean isChecked) {
 
                             if(isChecked) {
-                                //System.out.println("Checking checkbox: "+ sendnumber + ", --- , "+ arr);
                                 checked[position] = true;
                                 mPlusQuotes.put(sendnumber, arr);
                             } else {

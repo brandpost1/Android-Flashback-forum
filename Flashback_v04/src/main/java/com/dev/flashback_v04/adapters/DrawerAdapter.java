@@ -62,7 +62,7 @@ public class DrawerAdapter extends BaseAdapter {
         mDrawerStrings.add(new DrawerItem("Item", "Hem","R.drawable.ic_menu_home", 0));
         mDrawerStrings.add(new DrawerItem("Item", "Aktuella ämnen","", 1));
         mDrawerStrings.add(new DrawerItem("Item", "Nya ämnen","", 2));
-        mDrawerStrings.add(new DrawerItem("Item", "(Nya inlägg)","", 3));
+        mDrawerStrings.add(new DrawerItem("Item", "Nya inlägg","", 3));
         //mDrawerStrings.add(new DrawerItem("Item", "Mina inlägg","", 4, true));
         //mDrawerStrings.add(new DrawerItem("Item", "Citerade inlägg","", 5, true));
         mDrawerStrings.add(new DrawerItem("Item", "(Sök)","", 6));

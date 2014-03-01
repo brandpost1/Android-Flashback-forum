@@ -20,6 +20,10 @@ public class Post {
 	String userProfileUrl;
 	String regdate;
 
+
+
+    String postUrl;
+
 	public Post() {
 		postRows = new ArrayList<String[]>();
 
@@ -49,7 +53,13 @@ public class Post {
         return quote;
     }
 
-	public ArrayList<String[]> getPostRows() {
+    public void setPostUrl(String postUrl) {
+        this.postUrl = postUrl;
+    }
+    public String getPostUrl() {
+        return postUrl;
+    }
+    public ArrayList<String[]> getPostRows() {
 		return postRows;
 	}
 

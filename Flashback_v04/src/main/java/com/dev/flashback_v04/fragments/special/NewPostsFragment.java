@@ -19,6 +19,7 @@ import com.dev.flashback_v04.Item_CurrentThreads;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.special.CurrentThreadsAdapter;
+import com.dev.flashback_v04.adapters.special.NewThreadsAdapter;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
 
@@ -27,7 +28,7 @@ import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
  */
 public class NewPostsFragment extends ListFragment {
 
-    private CurrentThreadsAdapter mAdapter;
+    private NewThreadsAdapter mAdapter;
     OnOptionSelectedListener mListener;
     TextView header;
 
@@ -49,7 +50,7 @@ public class NewPostsFragment extends ListFragment {
         super.onActivityCreated(savedInstanceState);
         registerForContextMenu(getListView());
         if(mAdapter == null) {
-            mAdapter = new CurrentThreadsAdapter(getActivity());
+            mAdapter = new NewThreadsAdapter(getActivity());
             setListAdapter(mAdapter);
         }
 

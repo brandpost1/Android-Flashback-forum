@@ -3,7 +3,6 @@ package com.dev.flashback_v04.asynctasks;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.view.Gravity;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -57,16 +56,22 @@ public class LoginTask extends AsyncTask<String, String, Boolean> {
 
 	@Override
 	protected Boolean doInBackground(String... strings) {
-		if(LoginHandler.login(strings[0], strings[1], mContext)) {
-            if(parser.setUserId()) {
-                if(dialog.isShowing()) this.dialog.dismiss();
-                return true;
+        try {
+            if(LoginHandler.login(strings[0], strings[1], mContext)) {
+                if(parser.setUserId()) {
+                    return true;
+                } else {
+                    return false;
+                }
             } else {
                 return false;
             }
-        } else {
-            if(dialog.isShowing()) this.dialog.dismiss();
+        } catch (Exception e) {
             return false;
+        } finally {
+            if(dialog.isShowing()) this.dialog.dismiss();
         }
+
     }
+
 }
