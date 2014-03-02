@@ -81,9 +81,6 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 		big = (TextView)view.findViewById(R.id.textView);
 		big.setText(mCategories.get(i).getName());
 
-        Animation animation = AnimationUtils.loadAnimation(mContext, R.anim.abc_fade_in);
-        animation.setDuration(1200);
-        view.startAnimation(animation);
 		return view;
 	}
 }

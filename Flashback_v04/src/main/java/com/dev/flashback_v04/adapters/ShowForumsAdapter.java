@@ -94,10 +94,6 @@ public class ShowForumsAdapter extends BaseAdapter implements OnTaskComplete {
             }
         // End of hackish
 
-        Animation animation = AnimationUtils.loadAnimation(mContext, R.anim.abc_fade_in);
-        animation.setDuration(1200);
-        view.startAnimation(animation);
-
         return view;
 	}
 

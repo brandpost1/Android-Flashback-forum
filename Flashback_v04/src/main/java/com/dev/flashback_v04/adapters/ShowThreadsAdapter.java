@@ -171,10 +171,6 @@ public class ShowThreadsAdapter extends BaseAdapter implements OnTaskComplete {
 				break;
 		}
 
-        Animation animation = AnimationUtils.loadAnimation(mContext, R.anim.abc_fade_in);
-        animation.setDuration(1200);
-        view.startAnimation(animation);
-
 		return view;
 	}
 
