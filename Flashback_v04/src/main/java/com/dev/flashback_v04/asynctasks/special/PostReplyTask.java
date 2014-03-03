@@ -96,11 +96,8 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
 
             Toast.makeText(mContext, "Svar skickat!", Toast.LENGTH_SHORT).show();
 
-            try {
-                ((MainActivity)mCallback).updateTaskQueue.put(args);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            ((MainActivity)mContext).updateThread(args);
+
         } else {
             Toast.makeText(mContext, "Något hände.. Försök igen..", Toast.LENGTH_SHORT).show();
 

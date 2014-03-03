@@ -47,51 +47,12 @@ import java.lang.Thread;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
-class PollingThread extends Thread {
-
-    LinkedBlockingQueue<Bundle> queue;
-    MainActivity mContext;
-
-    public PollingThread(MainActivity context, LinkedBlockingQueue<Bundle> updateTaskQueue) {
-        queue = updateTaskQueue;
-        mContext = context;
-    }
-
-    /*
-    * Will wait for bundles to appear in the queue
-    * Should be put in there from the asynctasks
-    * */
-    @Override
-    public void run() {
-        Bundle bundle;
-        try {
-            while (!Thread.interrupted()) {
-                bundle = queue.take();
-                String bundletype = bundle.getString("BundleType");
-                if(bundletype.equals("UpdateThread")) {
-                    mContext.updateThread(bundle);
-                }
-                if(bundletype.equals("ThreadCreated")) {
-                    mContext.updateForum(bundle);
-                }
-
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-}
-
 /**
  * Created by Viktor on 2013-07-13.
  */
 public class MainActivity extends ActionBarActivity implements OnOptionSelectedListener, UpdateStuff<Bundle>, UpdateForum<Bundle> {
 
 	public FragmentManager fragmentManager;
-
-    public LinkedBlockingQueue<Bundle> updateTaskQueue;
-    PollingThread pollingThread;
 
     /*
     Banner ads
@@ -113,8 +74,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	* */
 	public MainActivity() {
         activity = this;
-        updateTaskQueue = new LinkedBlockingQueue<Bundle>();
-        pollingThread = new PollingThread(this, updateTaskQueue);
 	}
 
 
@@ -316,8 +275,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
-		// Start the background pollingthread
-        pollingThread.start();
 
         // Set default preferences
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
