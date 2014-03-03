@@ -166,11 +166,12 @@ public class ShowThreadsFragment extends ListFragment {
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerright = (TextView)view.findViewById(R.id.headerright);
-        final String numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
+
 
         if(mAdapter != null) {
             if(!mAdapter.updatedthreads) {
                 headerupdate = new Thread(new Runnable() {
+                    String numpages;
                     @Override
                     public void run() {
                         while(!mAdapter.updatedthreads) {
@@ -180,6 +181,7 @@ public class ShowThreadsFragment extends ListFragment {
                                 e.printStackTrace();
                             }
                         }
+                        numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
                         try {
                             mActivity.runOnUiThread(new Runnable() {
                                 @Override
@@ -200,6 +202,7 @@ public class ShowThreadsFragment extends ListFragment {
                 });
                 headerupdate.start();
             } else {
+                String numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
                 if(mAdapter.getThreads().isEmpty()) {
                     headerright.setText("");
                 } else {
