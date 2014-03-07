@@ -114,7 +114,7 @@ public class Parser {
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return false;
         }
 
@@ -152,7 +152,7 @@ public class Parser {
             return forumList;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return forumList;
         }
 
@@ -218,7 +218,7 @@ public class Parser {
             return mThreads;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return mThreads;
         }
 
@@ -403,7 +403,7 @@ public class Parser {
             return postArrayList;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return postArrayList;
         }
         String author;
@@ -798,7 +798,7 @@ public class Parser {
             return currentList;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return currentList;
         }
 
@@ -855,7 +855,7 @@ public class Parser {
             return newList;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg("Some IOException. Possibly timeout.. Go back and try again.");
+            showErrorMsg(e.getMessage());
             return newList;
         }
 
