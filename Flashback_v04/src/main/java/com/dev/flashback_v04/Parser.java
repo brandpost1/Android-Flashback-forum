@@ -92,21 +92,16 @@ public class Parser {
             // Check for cookie
             if(!cookie.isEmpty()) {
                 // Connect with cookie
-                try {
-                    currentSite = LoginHandler.cookieConnect(url, cookie);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                currentSite = LoginHandler.cookieConnect(url, cookie);
             } else {
                 // Connect without cookie
-                try {
-                    currentSite = LoginHandler.basicConnect(url);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                currentSite = LoginHandler.basicConnect(url);
+            }
+            if(currentSite == null) {
+                throw new NullPointerException("Failed to parse site");
             }
         } else {
-            throw new NullPointerException("[EXCEPTION] - No network connection.");
+            throw new NullPointerException("No network connection.");
         }
     }
 
@@ -115,7 +110,7 @@ public class Parser {
             Connect("https://www.flashback.org/profile.php?do=editoptions");
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -153,7 +148,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return forumList;
         } catch (IOException e) {
             e.printStackTrace();
@@ -219,7 +214,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return mThreads;
         } catch (IOException e) {
             e.printStackTrace();
@@ -341,7 +336,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return 1;
         } catch (IOException e) {
             e.printStackTrace();
@@ -372,7 +367,7 @@ public class Parser {
         } catch(NullPointerException e) {
             e.printStackTrace();
             return false;
-            //showErrorMsg("No network connection available.");
+            //showErrorMsg(e.getMessage());
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -404,7 +399,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return postArrayList;
         } catch (IOException e) {
             e.printStackTrace();
@@ -799,7 +794,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return currentList;
         } catch (IOException e) {
             e.printStackTrace();
@@ -856,7 +851,7 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg("No network connection available.");
+            showErrorMsg(e.getMessage());
             return newList;
         } catch (IOException e) {
             e.printStackTrace();

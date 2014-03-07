@@ -47,7 +47,7 @@ import javax.net.ssl.HttpsURLConnection;
  */
 public class LoginHandler {
 
-    public static Document basicConnect(String site) throws Exception {
+    public static Document basicConnect(String site) throws IOException {
         URL url = new URL(site);
         Document current = null;
         HttpsURLConnection connection = null;
@@ -62,12 +62,22 @@ public class LoginHandler {
 
         return current;
     }
-    public static Document cookieConnect(String site, Map<String, String> cookie) throws Exception{
-        URL url = new URL(site);
+    public static Document cookieConnect(String site, Map<String, String> cookie) throws IOException {
+        URL url;
+        try {
+            url = new URL(site);
+        } catch (IOException e) {
+            throw new IOException("Malformed url - " + site);
+        }
+
         Document current = null;
         HttpsURLConnection connection = null;
 
-        connection = (HttpsURLConnection)url.openConnection();
+        try {
+            connection = (HttpsURLConnection)url.openConnection();
+        } catch (IOException e) {
+            throw new IOException("Failed to open connection");
+        }
         connection.setDoOutput(true);
         connection.setConnectTimeout(3000);
         connection.setReadTimeout(3000);
@@ -84,7 +94,11 @@ public class LoginHandler {
 
         // Make request
         InputStream response;
-        response = connection.getInputStream();
+        try {
+            response = connection.getInputStream();
+        } catch (IOException e) {
+            throw new IOException("Failed to get Inputstream");
+        }
 
         // Parse response
         current = Jsoup.parse(response, null, site);
@@ -94,11 +108,17 @@ public class LoginHandler {
         return current;
     }
 
-    public static boolean login(String userName, String password, Context context) throws Exception{
+    public static boolean login(String userName, String password, Context context) throws IOException{
         URL url = null;
         HttpURLConnection connection = null;
         Map<String, String> mCookies = new HashMap<String, String>();
-        url = new URL("https://www.flashback.org/login.php");
+        try {
+            url = new URL("https://www.flashback.org/login.php");
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Malformed url");
+        }
+
 
         String parameters = "";
 
@@ -120,15 +140,26 @@ public class LoginHandler {
             count++;
         }
 
+        try {
+            connection = (HttpsURLConnection)url.openConnection();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Failed to open connection");
+        }
 
-        connection = (HttpsURLConnection)url.openConnection();
         connection.setInstanceFollowRedirects(false);
         connection.setConnectTimeout(3000);
         connection.setReadTimeout(3000);
         connection.setUseCaches(false);
         connection.setDoOutput(true);
         connection.setDoInput(true);
-        connection.setRequestMethod("POST");
+        try {
+            connection.setRequestMethod("POST");
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Failed to set requestmethod");
+        }
+
 
         // Some headers
         connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -139,10 +170,19 @@ public class LoginHandler {
         connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
 
         // Send post request
-        DataOutputStream out = new DataOutputStream(connection.getOutputStream());
-        out.writeBytes(parameters);
-        out.flush();
-        out.close();
+        DataOutputStream out = null;
+        try {
+            out = new DataOutputStream(connection.getOutputStream());
+            out.writeBytes(parameters);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Output failed");
+        } finally {
+            if(out != null)
+                out.close();
+        }
+
 
         // Get cookies from response
         List<String> cookies = connection.getHeaderFields().get("Set-Cookie");
