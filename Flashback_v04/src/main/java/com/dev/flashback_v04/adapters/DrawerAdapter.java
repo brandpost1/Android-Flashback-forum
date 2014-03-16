@@ -30,25 +30,17 @@ public class DrawerAdapter extends BaseAdapter {
             this.image = image;
             this.id = id;
         }
-        public DrawerItem(String type, String text, String image, int id, boolean loginreq) {
-            this.type = type;
-            this.text = text;
-            this.image = image;
-            this.id = id;
-            this.requiresLogin = loginreq;
-        }
         public String type = "";
         public String text = "";
         public String image = "";
         public int id;
-        public boolean requiresLogin;
     }
 
     static final int DRAWER_DIVIDER = 0;
     static final int DRAWER_ITEM = 1;
 
     private LayoutInflater mInflater;
-    private ArrayList<DrawerItem> mDrawerStrings;
+    private ArrayList<DrawerItem> mList;
 
     private Context mContext;
 
@@ -56,30 +48,44 @@ public class DrawerAdapter extends BaseAdapter {
 
         mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        mList = new ArrayList<DrawerItem>();
 
-        mDrawerStrings = new ArrayList<DrawerItem>();
-        mDrawerStrings.add(new DrawerItem("Divider", "NAVIGATION"));
-        mDrawerStrings.add(new DrawerItem("Item", "Hem","R.drawable.ic_menu_home", 0));
-        mDrawerStrings.add(new DrawerItem("Item", "Aktuella ämnen","", 1));
-        mDrawerStrings.add(new DrawerItem("Item", "Nya ämnen","", 2));
-        mDrawerStrings.add(new DrawerItem("Item", "Nya inlägg","", 3));
-        //mDrawerStrings.add(new DrawerItem("Item", "Mina inlägg","", 4, true));
-        //mDrawerStrings.add(new DrawerItem("Item", "Citerade inlägg","", 5, true));
-        mDrawerStrings.add(new DrawerItem("Item", "(Sök)","", 6));
-        mDrawerStrings.add(new DrawerItem("Divider", "KONTO"));
-        mDrawerStrings.add(new DrawerItem("Item", "Inställningar","", 7));
-        if(!LoginHandler.loggedIn(mContext)) {
-            mDrawerStrings.add(new DrawerItem("Item", "Logga in","", 8));
-        } else {
-            mDrawerStrings.add(new DrawerItem("Item", "Logga ut","", 8));
+        // Since refreshing refuses to work properly
+
+        // Not logged in
+        if(!LoginHandler.loggedIn(context)) {
+            mList.add(new DrawerItem("Divider", "NAVIGATION"));
+            mList.add(new DrawerItem("Item", "Hem", "R.drawable.ic_menu_home", 0));
+            mList.add(new DrawerItem("Item", "Aktuella ämnen", "", 1));
+            mList.add(new DrawerItem("Item", "Nya ämnen", "", 2));
+            mList.add(new DrawerItem("Item", "Nya inlägg", "", 3));
+            mList.add(new DrawerItem("Item", "(Sök)", "", 4));
+            mList.add(new DrawerItem("Divider", ""));
+            mList.add(new DrawerItem("Item", "Inställningar", "", 9));
+            mList.add(new DrawerItem("Item", "Logga in", "", 10));
         }
-
-
+        // When logged in
+        if(LoginHandler.loggedIn(context)) {
+            mList.add(new DrawerItem("Divider", "NAVIGATION"));
+            mList.add(new DrawerItem("Item", "Hem", "R.drawable.ic_menu_home", 0));
+            mList.add(new DrawerItem("Item", "Aktuella ämnen", "", 1));
+            mList.add(new DrawerItem("Item", "Nya ämnen", "", 2));
+            mList.add(new DrawerItem("Item", "Nya inlägg", "", 3));
+            mList.add(new DrawerItem("Item", "(Sök)", "", 4));
+            mList.add(new DrawerItem("Divider", "KONTO"));
+            mList.add(new DrawerItem("Item", "Mina inlägg", "", 5));
+            mList.add(new DrawerItem("Item", "Mina Ämnen", "", 6));
+            mList.add(new DrawerItem("Item", "Citerade inlägg", "", 7));
+            mList.add(new DrawerItem("Item", "(PM)", "", 8));
+            mList.add(new DrawerItem("Divider", "APP"));
+            mList.add(new DrawerItem("Item", "Inställningar", "", 9));
+            mList.add(new DrawerItem("Item", "Logga ut", "", 10));
+        }
     }
 
     @Override
     public int getCount() {
-        return mDrawerStrings.size();
+        return mList.size();
     }
 
     @Override
@@ -89,12 +95,12 @@ public class DrawerAdapter extends BaseAdapter {
 
     @Override
     public long getItemId(int i) {
-        return mDrawerStrings.get(i).id;
+        return mList.get(i).id;
     }
 
     @Override
     public boolean isEnabled(int position) {
-        if(mDrawerStrings.get(position).type.equals("Divider") || mDrawerStrings.get(position).requiresLogin == true) {
+        if(mList.get(position).type.equals("Divider")) {
             return false;
         } else {
             return true;
@@ -112,18 +118,21 @@ public class DrawerAdapter extends BaseAdapter {
             switch (type) {
                 case DRAWER_ITEM:
                     view = mInflater.inflate(R.layout.drawer_item, null);
-                    itemText = (TextView)view.findViewById(R.id.item_text);
-                    if(mDrawerStrings.get(i).requiresLogin) {
-                        itemText.setTextColor(mContext.getResources().getColor(R.color.Gray));
-                    }
-                    itemText.setText(mDrawerStrings.get(i).text);
                     break;
                 case DRAWER_DIVIDER:
                     view = mInflater.inflate(R.layout.drawer_divider, null);
-                    dividerText = (TextView)view.findViewById(R.id.divider_text);
-                    dividerText.setText(mDrawerStrings.get(i).text);
                     break;
             }
+        }
+        switch (type) {
+            case DRAWER_ITEM:
+                itemText = (TextView)view.findViewById(R.id.item_text);
+                itemText.setText(mList.get(i).text);
+                break;
+            case DRAWER_DIVIDER:
+                dividerText = (TextView)view.findViewById(R.id.divider_text);
+                dividerText.setText(mList.get(i).text);
+                break;
         }
         return view;
     }
@@ -135,7 +144,7 @@ public class DrawerAdapter extends BaseAdapter {
 
     @Override
     public int getItemViewType(int position) {
-        DrawerItem item = mDrawerStrings.get(position);
+        DrawerItem item = mList.get(position);
         if(item.type.equals("Divider")) {
             return DRAWER_DIVIDER;
         } else {

@@ -32,9 +32,7 @@ public class UpdateThreadTask extends AsyncTask<String, String, Integer> {
 		super.onPostExecute(size);
         bundle.putInt("NumPages", size);
         bundle.putString("BundleType", "UpdateThread");
-
         ((MainActivity)mCallback).updateThread(bundle);
-
     }
 
     @Override

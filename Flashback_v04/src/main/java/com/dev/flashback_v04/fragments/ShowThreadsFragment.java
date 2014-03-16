@@ -2,6 +2,8 @@ package com.dev.flashback_v04.fragments;
 
 
 import android.app.Activity;
+import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.view.ContextMenu;
@@ -19,14 +21,103 @@ import android.widget.Toast;
 import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowThreadsAdapter;
+import com.dev.flashback_v04.interfaces.Callback;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
 import java.lang.Thread;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-06-25.
  */
 public class ShowThreadsFragment extends ListFragment {
+
+    public class ForumsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+
+        Context mContext;
+        Callback mCallback;
+        Callback<HashMap<String, String>> mProgressUpdate;
+        Parser mParser;
+
+        public ForumsParserTask(Context context, Callback callback) {
+            mParser = new Parser(context);
+            mContext = context;
+            mCallback = callback;
+
+            mProgressUpdate = new Callback<HashMap<String, String>>() {
+                @Override
+                public void onTaskComplete(HashMap<String, String> data) {
+                    publishProgress(data);
+                }
+            };
+        }
+
+        @Override
+        protected void onProgressUpdate(HashMap<String, String>... data) {
+            super.onProgressUpdate(data[0]);
+            // Give back to fragment
+            mCallback.onTaskComplete(data[0]);
+        }
+
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            try {
+                // Url, Callback
+                mParser.getCategoryContent(strings[0], mProgressUpdate);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    public class ThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+
+        Context mContext;
+        Parser mParser;
+        Callback mCallback;
+        Callback mProgressUpdate;
+
+        public ThreadsParserTask(Context context, Callback callback) {
+            mParser = new Parser(context);
+            mContext = context;
+            mCallback = callback;
+
+            mProgressUpdate = new Callback<HashMap<String, String>>() {
+                @Override
+                public void onTaskComplete(HashMap<String, String> data) {
+                    publishProgress(data);
+                }
+            };
+        }
+
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            try {
+                mParser.getForumContents(strings[0], mProgressUpdate);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected void onProgressUpdate(HashMap<String, String>... threadItem) {
+            super.onProgressUpdate(threadItem[0]);
+            mCallback.onTaskComplete(threadItem[0]);
+        }
+    }
+
+    ThreadsParserTask threadsParserTask;
+    ForumsParserTask forumsParserTask;
+    private Callback<HashMap<String, String>> threadFetched;
+    Callback<HashMap<String, String>> forumFetched;
 
 	ShowThreadsAdapter mAdapter;
 	int selected_page;
@@ -34,33 +125,35 @@ public class ShowThreadsFragment extends ListFragment {
     String base_url;
     String forum_name;
     String forum_id;
+    int num_pages;
     TextView header;
     TextView headerright;
-    Thread headerupdate;
 
     OnOptionSelectedListener mListener;
     Activity mActivity;
     Menu menu;
-	public ShowThreadsFragment() {
-
-	}
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         mActivity = activity;
-        try{
-            mListener = (OnOptionSelectedListener) activity;
-        } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString() + " must implement OnOptionSelectedListener");
-        }
     }
 
-	@Override
+    @Override
+    public void onPause() {
+        super.onPause();
+        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
+    }
+    @Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         this.menu = menu;
-        // Show updatebutton
-        inflater.inflate(R.menu.forum_default_menu, menu);
+        menu.clear();
 
         try {
             if(LoginHandler.loggedIn(mActivity) && mAdapter.getThreads().size() > 0)
@@ -68,8 +161,6 @@ public class ShowThreadsFragment extends ListFragment {
         } catch(NullPointerException e) {
             e.printStackTrace();
         }
-
-
 		super.onCreateOptionsMenu(menu, inflater);
 	}
 
@@ -81,7 +172,7 @@ public class ShowThreadsFragment extends ListFragment {
                 args.putString("ForumName", forum_name);
                 args.putString("ForumId", forum_id);
                 args.putString("ForumUrl", base_url);
-                mListener.onOptionSelected(item.getItemId(), args);
+                ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
                 break;
             case R.id.forum_update:
                 Bundle bundle = new Bundle();
@@ -92,141 +183,132 @@ public class ShowThreadsFragment extends ListFragment {
 	}
 
     @Override
-    public void onPause() {
-        super.onPause();
-
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putString("BaseUrl", base_url);
+        outState.putString("ForumUrl", forum_url);
+        outState.putString("Forumid", forum_id);
+        outState.putString("ForumName", forum_name);
+        outState.putInt("SelectedPage", selected_page);
+        outState.putInt("NumPages", num_pages);
+        outState.putSerializable("AdapterForumValues", mAdapter.getForums());
+        outState.putSerializable("AdapterThreadValues", mAdapter.getThreads());
+        super.onSaveInstanceState(outState);
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-
-        try {
-            base_url = getArguments().getString("Url");
-            forum_url = getArguments().getString("Url");
-            forum_id = forum_url.split("/f", 2)[1];
-            forum_name = getArguments().getString("ForumName");
-            // +1 Because the pages start their index at 1. 0 works, but it just shows the first page of threads, so if you scrolled the next page would be the same as the first.
-            selected_page = getArguments().getInt("index") + 1;
-            forum_url = forum_url.concat("p"+selected_page);
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        }
-
-        if(mAdapter == null) {		// Don't know if this is needed
-            mAdapter = new ShowThreadsAdapter(mActivity, forum_url);
-            setListAdapter(mAdapter);
-        }
         super.onCreate(savedInstanceState);
-    }
+        setHasOptionsMenu(true);
 
-    @Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
-		setHasOptionsMenu(true);
-        registerForContextMenu(getListView());
+        mAdapter = new ShowThreadsAdapter(mActivity);
 
-	}
-
-	@Override
-	public void onListItemClick(ListView l, View v, int position, long id) {
-		super.onListItemClick(l, v, position, id);
-		if(mAdapter.getForums().size() > position) {
-			String url = mAdapter.getForums().get(position).getUrl();
-            String forumname = mAdapter.getForums().get(position).getName();
-			((MainActivity)mActivity).openForum(url, 1, forumname);
-		} else {
-			String url = mAdapter.getThreads().get(position-mAdapter.getForums().size()).getThreadLink();
-            int numpages = Integer.parseInt(mAdapter.getThreads().get(position-mAdapter.getForums().size()).getNumPages());
-            String threadname = mAdapter.getThreads().get(position-mAdapter.getForums().size()).getThreadName();
+        if(savedInstanceState != null) {
+            // Restore adapter
+            ArrayList<HashMap<String, String>> savedForumValues = (ArrayList<HashMap<String, String>>) savedInstanceState.get("AdapterForumValues");
+            ArrayList<HashMap<String, String>> savedThreadValues = (ArrayList<HashMap<String, String>>) savedInstanceState.get("AdapterThreadValues");
+            mAdapter.addForumItems(savedForumValues);
+            mAdapter.addThreadItems(savedThreadValues);
+            mAdapter.notifyDataSetChanged();
+            // Restore other
+            base_url = savedInstanceState.getString("BaseUrl");
+            forum_url = savedInstanceState.getString("ForumUrl");
+            forum_id = savedInstanceState.getString("ForumId");
+            forum_name = savedInstanceState.getString("ForumName");
+            selected_page = savedInstanceState.getInt("SelectedPage");
+            num_pages = savedInstanceState.getInt("NumPages");
+        } else {
             try {
-                ((MainActivity)mActivity).openThread(url, numpages, 0, threadname);
-
-            } catch(Exception e) {
+                num_pages = getArguments().getInt("NumPages");
+                base_url = getArguments().getString("Url");
+                forum_url = getArguments().getString("Url");
+                forum_id = forum_url.split("/f", 2)[1];
+                forum_name = getArguments().getString("ForumName");
+                // +1 Because the pages start their index at 1. 0 works, but it just shows the first page of threads, so if you scrolled the next page would be the same as the first.
+                selected_page = getArguments().getInt("index") + 1;
+                forum_url = forum_url.concat("p"+selected_page);
+            } catch (NullPointerException e) {
                 e.printStackTrace();
             }
 
+            forumFetched = new Callback<HashMap<String, String>>() {
+                @Override
+                public void onTaskComplete(HashMap<String, String> data) {
+                    mAdapter.addForumItem(data);
+                    mAdapter.notifyDataSetChanged();
+                }
+            };
 
-		}
-	}
+            threadFetched = new Callback<HashMap<String, String>>() {
+                boolean invalidated = false;
+                @Override
+                public void onTaskComplete(HashMap<String, String> data) {
+                    mAdapter.addThreadItem(data);
+                    mAdapter.notifyDataSetChanged();
+                    if(!invalidated) {
+                        ((MainActivity) mActivity).supportInvalidateOptionsMenu();
+                        invalidated = true;
+                    }
+                }
+            };
 
-
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        if(mAdapter == null) {		// Don't know if this is needed
-            forum_url = getArguments().getString("Url");
-            forum_name = getArguments().getString("ForumName");
-            // +1 Because the pages start their index at 1. 0 works, but it just shows the first page of threads, so if you scrolled the next page would be the same as the first.
-            selected_page = getArguments().getInt("index") + 1;
-            forum_url = forum_url.concat("p"+selected_page);
+            forumsParserTask = new ForumsParserTask(mActivity, forumFetched);
+            threadsParserTask = new ThreadsParserTask(mActivity, threadFetched);
+            forumsParserTask.execute(forum_url);
+            threadsParserTask.execute(forum_url);
         }
+        setListAdapter(mAdapter);
+    }
 
-        View view = inflater.inflate(R.layout.list_fragment_layout, container, false);
-        int len = getResources().getInteger(R.integer.header_max_length);
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+
+        View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
         String showthisname;
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerright = (TextView)view.findViewById(R.id.headerright);
 
-
-        if(mAdapter != null) {
-            if(!mAdapter.updatedthreads) {
-                headerupdate = new Thread(new Runnable() {
-                    String numpages;
-                    @Override
-                    public void run() {
-                        while(!mAdapter.updatedthreads) {
-                            try {
-                                Thread.sleep(200);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
-                        try {
-                            mActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if(mAdapter.getThreads().isEmpty()) {
-                                        headerright.setText("");
-                                    } else {
-
-                                        headerright.setText("Sida "+ selected_page +" av "+ numpages);
-                                    }
-                                }
-                            });
-                            // If you press the back button before this thread is finished, this exception will be thrown
-                        } catch (NullPointerException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-                headerupdate.start();
-            } else {
-                String numpages = Integer.toString(SharedPrefs.getPreference(mActivity, "forum_size", "size"));
-                if(mAdapter.getThreads().isEmpty()) {
-                    headerright.setText("");
-                } else {
-                    headerright.setText("Sida "+ selected_page +" av " + numpages);
-                }
-            }
-        }
-
         try {
-            if (forum_name.length() >= len) {
-                showthisname = forum_name.substring(0, len)+ "...";
-            } else {
-                showthisname = forum_name;
-            }
+            showthisname = forum_name;
         } catch (NullPointerException e) {
             showthisname = "Error-name";
             e.printStackTrace();
         }
 
         header.setText(showthisname);
+		if(num_pages == 1) {
+			headerright.setText("");
+		} else {
+			headerright.setText("Sida " + selected_page + " av " + num_pages);
+		}
 
+        return view;
 
-		return view;
+    }
 
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        registerForContextMenu(getListView());
+    }
+
+    @Override
+	public void onListItemClick(ListView l, View v, int position, long id) {
+		super.onListItemClick(l, v, position, id);
+		if(mAdapter.getForums().size() > position) {
+			String url = mAdapter.getForums().get(position).get("ForumLink");
+            String forumname = mAdapter.getForums().get(position).get("ForumName");
+			((MainActivity)mActivity).openForum(url, forumname);
+		} else {
+			String url = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadLink");
+            int numpages = Integer.parseInt(mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadNumPages"));
+            String threadname = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadName");
+            try {
+                ((MainActivity)mActivity).openThread(url, 0, threadname);
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+		}
 	}
 
 	@Override
@@ -248,15 +330,15 @@ public class ShowThreadsFragment extends ListFragment {
 			switch (item.getItemId()) {
 				case R.id.gotolastpage:
                     int position = info.position;
-                    String url = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).getThreadLink();
-                    int numpages = Integer.parseInt(this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).getNumPages());
-                    String threadname = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).getThreadName();
+                    String url = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadLink");
+                    int numpages = Integer.parseInt(this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadNumPages"));
+                    String threadname = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadName");
                     Bundle args = new Bundle();
-                    args.putInt("NumPages", numpages);
+                    args.putInt("LastPage", numpages);
                     args.putString("Url", url);
                     args.putString("ThreadName", threadname);
 
-                    mListener.onOptionSelected(item.getItemId(), args);
+                    ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
 
 					return true;
 				default:
@@ -265,8 +347,4 @@ public class ShowThreadsFragment extends ListFragment {
 
 	}
 
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
 }

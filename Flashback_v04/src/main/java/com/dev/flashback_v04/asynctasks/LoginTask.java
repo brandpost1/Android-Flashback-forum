@@ -40,7 +40,7 @@ public class LoginTask extends AsyncTask<String, String, Boolean> {
 			Toast.makeText(mContext, "Logged in.", Toast.LENGTH_SHORT).show();
             view.setText("Logga ut");
             ((MainActivity)mContext).getSupportFragmentManager().popBackStack("Start", 0);
-
+            ((MainActivity)mContext).refreshDrawer();
 		} else {
 			Toast.makeText(mContext, "Could not login.", Toast.LENGTH_SHORT).show();
 

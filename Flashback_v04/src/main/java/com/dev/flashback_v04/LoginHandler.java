@@ -2,6 +2,7 @@ package com.dev.flashback_v04;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.interfaces.RedirectCallback;
@@ -199,6 +200,10 @@ public class LoginHandler {
 
         // Check if logged in by looking for a specific cookie
         if(mCookies.containsKey("vbscanpassword")) {
+            // Save username
+            SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+            appPrefs.edit().putString("UserName", userName).commit();
+
             setSessionCookie(mCookies, context);
             getPreferences(context);
             return true;

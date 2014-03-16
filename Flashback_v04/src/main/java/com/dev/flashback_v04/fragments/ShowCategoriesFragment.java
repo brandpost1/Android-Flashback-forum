@@ -1,7 +1,6 @@
 package com.dev.flashback_v04.fragments;
 
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
@@ -13,10 +12,9 @@ import android.widget.ListView;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowCategoriesAdapter;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-06-25.
@@ -31,41 +29,47 @@ public class ShowCategoriesFragment extends ListFragment {
 
 	}
 
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putStringArrayList("Categories", categories);
+        outState.putStringArrayList("CategoryNames", categorynames);
+    }
 
-		mAdapter = new ShowCategoriesAdapter(getActivity());
-		setListAdapter(mAdapter);
-		for(int i = 0; i < mAdapter.getCategories().size(); i++) {
-			categories.add(mAdapter.getCategories().get(i).getLink());
-            categorynames.add(mAdapter.getCategories().get(i).getName());
-		}
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mAdapter = new ShowCategoriesAdapter(getActivity());
 
-	}
+        if(savedInstanceState == null) {
+            for(int i = 0; i < mAdapter.getCategories().size(); i++) {
+                categories.add(mAdapter.getCategories().get(i).get("Link"));
+                categorynames.add(mAdapter.getCategories().get(i).get("Name"));
+            }
+        } else {
+            // Restore categories
+            categories = savedInstanceState.getStringArrayList("Categories");
+            categorynames = savedInstanceState.getStringArrayList("CategoryNames");
+        }
+        setListAdapter(mAdapter);
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
+        view.findViewById(R.id.headerleft).setVisibility(View.GONE);
+        view.findViewById(R.id.headerright).setVisibility(View.GONE);
+        return view;
+    }
 
 	@Override
 	public void onListItemClick(ListView l, View v, int position, long id) {
 		super.onListItemClick(l, v, position, id);
-
-		String url = mAdapter.getCategories().get(position).getLink();
-
-		((MainActivity)getParentFragment().getActivity()).openCategory(url, position, categories, categorynames);
-        v.setSelected(true);
-
+		String url = categories.get(position);
+		((MainActivity)getParentFragment().getActivity()).openCategory(url, position+1, categories, categorynames);
 	}
 
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		View view = inflater.inflate(R.layout.list_fragment_layout, container, false);
-        view.findViewById(R.id.headerleft).setVisibility(View.GONE);
-        view.findViewById(R.id.headerright).setVisibility(View.GONE);
 
-		return view;
-	}
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-	}
+
 }

@@ -8,27 +8,22 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.*;
-import com.dev.flashback_v04.asynctasks.special.CurrentThreadsParserTask;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-11-27.
  */
-public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<ArrayList<Item_CurrentThreads>> {
+public class CurrentThreadsAdapter extends BaseAdapter {
     public static final int ITEM_HEADER = 0;
     public static final int ITEM_ROW = 1;
     private final LayoutInflater mInflater;
-    ArrayList<Item_CurrentThreads> mItems;
-    CurrentThreadsParserTask parserTask;
-
+    ArrayList<HashMap<String, String>> mItems;
 
     public CurrentThreadsAdapter(Context context) {
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        parserTask = new CurrentThreadsParserTask(this, context);
-        parserTask.execute("https://www.flashback.org/aktuella-amnen");
-        mItems = new ArrayList<Item_CurrentThreads>();
+        mItems = new ArrayList<HashMap<String, String>>();
     }
 
     @Override
@@ -43,7 +38,7 @@ public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<Ar
 
     @Override
     public boolean isEnabled(int position) {
-        if(mItems.get(position).mType == ITEM_HEADER) {
+        if(mItems.get(position).get("Type").equals(Integer.toString(ITEM_HEADER))) {
             return false;
         } else {
             return true;
@@ -57,7 +52,7 @@ public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<Ar
 
     @Override
     public int getItemViewType(int position) {
-        switch (mItems.get(position).mType) {
+        switch (Integer.parseInt(mItems.get(position).get("Type"))) {
             case ITEM_HEADER:
                 return ITEM_HEADER;
             case ITEM_ROW:
@@ -89,7 +84,7 @@ public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<Ar
                 case ITEM_HEADER:
                     view = mInflater.inflate(R.layout.thread_current_divider, null);
                     header = (TextView)view.findViewById(R.id.divider_text);
-                    header.setText(mItems.get(i).mHeadline);
+                    header.setText(mItems.get(i).get("Headline"));
                     break;
                 case ITEM_ROW:
                     view = mInflater.inflate(R.layout.thread_current_item, null);
@@ -98,18 +93,18 @@ public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<Ar
                     replies = (TextView)view.findViewById(R.id.repliesCount);
                     readers = (TextView)view.findViewById(R.id.readerCount);
                     sourceForum = (TextView)view.findViewById(R.id.sourceForum);
-                    threadName.setText(mItems.get(i).mHeadline);
-                    views.setText(mItems.get(i).mViews);
-                    replies.setText(mItems.get(i).mReplies);
-                    readers.setText(mItems.get(i).mReaders);
-                    sourceForum.setText(mItems.get(i).mSourceForum);
+                    threadName.setText(mItems.get(i).get("Headline"));
+                    views.setText(mItems.get(i).get("Views"));
+                    replies.setText(mItems.get(i).get("Replies"));
+                    readers.setText(mItems.get(i).get("Readers"));
+                    sourceForum.setText(mItems.get(i).get("SourceForum"));
                     break;
             }
         }
         switch (type) {
             case ITEM_HEADER:
                 header = (TextView)view.findViewById(R.id.divider_text);
-                header.setText(mItems.get(i).mHeadline);
+                header.setText(mItems.get(i).get("Headline"));
                 break;
             case ITEM_ROW:
                 threadName = (TextView)view.findViewById(R.id.threadTitle);
@@ -117,20 +112,26 @@ public class CurrentThreadsAdapter extends BaseAdapter implements UpdateStuff<Ar
                 replies = (TextView)view.findViewById(R.id.repliesCount);
                 readers = (TextView)view.findViewById(R.id.readerCount);
                 sourceForum = (TextView)view.findViewById(R.id.sourceForum);
-                threadName.setText(mItems.get(i).mHeadline);
-                views.setText(mItems.get(i).mViews);
-                replies.setText(mItems.get(i).mReplies);
-                readers.setText(mItems.get(i).mReaders);
-                sourceForum.setText(mItems.get(i).mSourceForum);
+                threadName.setText(mItems.get(i).get("Headline"));
+                views.setText(mItems.get(i).get("Views"));
+                replies.setText(mItems.get(i).get("Replies"));
+                readers.setText(mItems.get(i).get("Readers"));
+                sourceForum.setText(mItems.get(i).get("SourceForum"));
                 break;
         }
 
         return view;
     }
 
-    @Override
-    public void updateThread(ArrayList<Item_CurrentThreads> o) {
-        mItems = o;
-        notifyDataSetChanged();
+    public ArrayList<HashMap<String, String>> getItems() {
+        return mItems;
+    }
+
+    public void putItems(ArrayList<HashMap<String, String>> items) {
+        mItems = items;
+    }
+
+    public void putItem(HashMap<String, String> data) {
+        mItems.add(data);
     }
 }

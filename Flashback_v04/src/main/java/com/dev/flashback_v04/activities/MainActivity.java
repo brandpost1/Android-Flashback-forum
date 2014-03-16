@@ -30,22 +30,24 @@ import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.adapters.DrawerAdapter;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
 import com.dev.flashback_v04.asynctasks.LoginTask;
-import com.dev.flashback_v04.fragments.WrapperFragment;
+import com.dev.flashback_v04.fragments.MainPager;
+import com.dev.flashback_v04.fragments.SecondaryPager;
 import com.dev.flashback_v04.fragments.special.CreateThreadFragment;
 import com.dev.flashback_v04.fragments.special.CurrentThreadsFragment;
+import com.dev.flashback_v04.fragments.special.MyPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewThreadsFragment;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
+import com.dev.flashback_v04.fragments.special.PrivateMessagingFragment;
+import com.dev.flashback_v04.fragments.special.SearchFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 import com.dev.flashback_v04.interfaces.UpdateForum;
 import com.dev.flashback_v04.interfaces.UpdateStuff;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
-
-import java.lang.Thread;
 import java.util.ArrayList;
-import java.util.concurrent.LinkedBlockingQueue;
+
 
 /**
  * Created by Viktor on 2013-07-13.
@@ -67,6 +69,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	private ListView mDrawerList;
 	private ActionBarDrawerToggle mDrawerToggle;
 	private String[] mDrawerItems;
+    DrawerAdapter mAdapter;
 
     private Activity activity;
 	/*
@@ -102,11 +105,10 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	/*
 	* Call this to open a specific thread
 	* */
-	public void openThread(String url, int numpages, int position, String threadname) {
-		Fragment fragment = new WrapperFragment();
+	public void openThread(String url, int position, String threadname) {
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 3);
-		args.putInt("NumPages", numpages);
         args.putInt("Position", position);
         args.putString("ThreadName", threadname);
 		args.putString("Url", url);
@@ -117,7 +119,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		* */
 		try {
 			fragmentManager.beginTransaction()
-					//.setCustomAnimations(R.anim.in_from_right, R.anim.out_to_left, R.anim.in_from_left, R.anim.out_to_right)
 					.addToBackStack("Threads")
 					.replace(R.id.fragmentcontainer, fragment)
 					.commit();
@@ -131,24 +132,23 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	/*
 	* Call this to open a specific forum
 	* */
-	public void openForum(String url, int size, String forumname) {
-		Fragment fragment = new WrapperFragment();
+	public void openForum(String url, String forumname) {
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 2);
-		args.putInt("NumPages", size);
         args.putString("ForumName", forumname);
 		args.putString("Url", url);
 		fragment.setArguments(args);
 		/*
 		* Replace the old fragment
 		* */
-
+System.out.println("Second: " + (MainActivity)this);
  		try {
 			fragmentManager.beginTransaction()
-					//.setCustomAnimations(R.anim.in_from_right, R.anim.out_to_left, R.anim.in_from_left, R.anim.out_to_right)
 					.addToBackStack("Forums")
 					.replace(R.id.fragmentcontainer, fragment)
 					.commit();
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -163,7 +163,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		* Initialize fragment.
 		* Pass along arguments etc..
 		* */
-		Fragment fragment = new WrapperFragment();
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 1);
 		args.putInt("NumPages", 15);
@@ -178,25 +178,12 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		* */
         try {
             fragmentManager.beginTransaction()
-                    //.setCustomAnimations(R.anim.in_from_right, R.anim.out_to_left, R.anim.in_from_left, R.anim.out_to_right)
                     .addToBackStack("Categories")
                     .replace(R.id.fragmentcontainer, fragment)
                     .commit();
         } catch (Exception e) {
             e.printStackTrace();
         }
-	}
-
-    @Override
-    protected void onStop() {
-       // pollingThread.interrupt();
-        super.onStop();
-    }
-
-    @Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-
 	}
 
     @Override
@@ -254,17 +241,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                     }).create();
             newsdialog.show();
 
-            AlertDialog infodialog = new AlertDialog.Builder(this)
-                    .setTitle(R.string.INFOHEADLINE)
-                    .setMessage(R.string.INFOMESSAGE)
-                    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-
-                        }
-                    }).create();
-            infodialog.show();
-
             PreferenceManager.getDefaultSharedPreferences(this)
                     .edit()
                     .putInt("VersionCode", nextVersion)
@@ -275,7 +251,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
-
+        System.out.println("Oncreate: " + (MainActivity)this);
         // Set default preferences
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
 
@@ -329,8 +305,9 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
  		mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
 		mDrawerList = (ListView) findViewById(R.id.left_drawer);
-        final DrawerAdapter mAdapter = new DrawerAdapter(this);
-		mDrawerList.setAdapter(mAdapter);
+
+        mAdapter = new DrawerAdapter(this);
+        mDrawerList.setAdapter(mAdapter);
 
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -420,30 +397,126 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 4:
-                        Toast.makeText(getBaseContext(), "4.", Toast.LENGTH_SHORT).show();
-                        // Hidden atm
-                        break;
-                    case 5:
-                        Toast.makeText(getBaseContext(), "5.", Toast.LENGTH_SHORT).show();
-                        // Hidden atm
-                        break;
-                    case 6:
-                        Toast.makeText(getBaseContext(), "Under uppbyggnad.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getBaseContext(), "Sök ska vara här", Toast.LENGTH_SHORT).show();
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
-                        /*
+
                         SearchFragment searchFragment = new SearchFragment();
-                        try {
+                        /*try {
                             fragmentManager.beginTransaction()
                                     .addToBackStack("Search")
                                     .replace(R.id.fragmentcontainer, searchFragment)
                                     .commit();
                         } catch (Exception e) {
                             e.printStackTrace();
+                        }*/
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
+
+                        break;
+                    case 5:
+						SecondaryPager myPostsPager = new SecondaryPager();
+						Bundle myPostsBundle = new Bundle();
+						myPostsBundle.putInt("FragmentType", 2);
+						myPostsPager.setArguments(myPostsBundle);
+						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+						// Same as above
+						try {
+							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MyPosts")
+									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MyPosts")) {
+								getSupportFragmentManager().popBackStack("MyPosts", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+							}
+						} catch (Exception e) {
+
+						}
+
+                        try {
+                            fragmentManager.beginTransaction()
+                                    .addToBackStack("MyPosts")
+                                    .replace(R.id.fragmentcontainer, myPostsPager)
+                                    .commit();
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
-                        */
+                        break;
+                    case 6:
+                        SecondaryPager myThreadsPager = new SecondaryPager();
+                        Bundle myThreadsBundle = new Bundle();
+                        myThreadsBundle.putInt("FragmentType", 1);
+                        myThreadsPager.setArguments(myThreadsBundle);
+						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+						// Same as above
+						try {
+							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MyThreads")
+									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MyThreads")) {
+								getSupportFragmentManager().popBackStack("MyThreads", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+							}
+						} catch (Exception e) {
+
+						}
+                        try {
+                            fragmentManager.beginTransaction()
+                                    .addToBackStack("MyThreads")
+                                    .replace(R.id.fragmentcontainer, myThreadsPager)
+                                    .commit();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 7:
+                        SecondaryPager myQuotesPager = new SecondaryPager();
+                        Bundle myQuotesBundle = new Bundle();
+                        myQuotesBundle.putInt("FragmentType", 0);
+                        myQuotesPager.setArguments(myQuotesBundle);
+						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+						// Same as above
+						try {
+							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MyQuotes")
+									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MyQuotes")) {
+								getSupportFragmentManager().popBackStack("MyQuotes", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+							}
+						} catch (Exception e) {
+
+						}
+
+                        try {
+                            fragmentManager.beginTransaction()
+                                    .addToBackStack("MyQuotes")
+                                    .replace(R.id.fragmentcontainer, myQuotesPager)
+                                    .commit();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
+                        break;
+                    case 8:
+                        PrivateMessagingFragment mPrivateMessagingFragment = new PrivateMessagingFragment();
+
+						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+						// Same as above
+						/*try {
+							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MyMessages")
+									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MyMessages")) {
+								getSupportFragmentManager().popBackStack("MyMessages", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+							}
+						} catch (Exception e) {
+
+						}
+                        try {
+                            fragmentManager.beginTransaction()
+                                    .addToBackStack("MyMessages")
+                                    .replace(R.id.fragmentcontainer, mPrivateMessagingFragment)
+                                    .commit();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }*/
+                        mDrawerLayout.closeDrawer(Gravity.LEFT);
+                        break;
+                    case 9:
                         try {
                             Intent intent = new Intent(getBaseContext(), SettingsActivity.class);
                             startActivity(intent);
@@ -453,7 +526,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         }
 
                         break;
-                    case 8:
+                    case 10:
                         TextView text = (TextView)view.findViewById(R.id.item_text);
                         if(!LoginHandler.loggedIn(activity)) {
                             showLoginDialog(text);
@@ -462,6 +535,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                             text.setText("Logga in");
                             getSupportFragmentManager().popBackStack("Start", 0);
                             mDrawerLayout.closeDrawer(Gravity.LEFT);
+                            refreshDrawer();
                         }
                         break;
                 }
@@ -475,17 +549,16 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 				R.string.drawer_close
 		) {
 			public void onDrawerClosed(View view) {
-                //getSupportActionBar().setTitle("");
 				supportInvalidateOptionsMenu();
 			}
 
 			public void onDrawerOpened(View drawerView) {
-				//getSupportActionBar().setTitle("Meny");
                 supportInvalidateOptionsMenu();
 			}
 		};
 		mDrawerLayout.setDrawerListener(mDrawerToggle);
         mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, Gravity.START);
+		mDrawerLayout.setScrimColor(getResources().getColor(R.color.transparent));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setHomeButtonEnabled(true);
         mDrawerToggle.syncState();
@@ -495,7 +568,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		* Each wrapperfragment contains its own viewpager.
 		* */
 		if(savedInstanceState == null) {
-			Fragment fragment = new WrapperFragment();
+			Fragment fragment = new MainPager();
 
 			Bundle args = new Bundle();
 			args.putInt("FragmentType", 0);
@@ -586,7 +659,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 }
                 break;
             case R.id.gotolastpage:
-                openThread(args.getString("Url"), args.getInt("NumPages"), args.getInt("NumPages"), args.getString("ThreadName"));
+                openThread(args.getString("Url"), args.getInt("LastPage"), args.getString("ThreadName"));
                 break;
         }
     }
@@ -612,10 +685,9 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 // Retrieve bundle info
                 String url = o.getString("Url");
                 int position = o.getInt("CurrentPage");
-                int numpages = o.getInt("NumPages");
                 String threadname = o.getString("ThreadName");
                 // Reload thread
-                openThread(url,numpages,position, threadname);
+                openThread(url ,position+1, threadname);
             }
         });
     }
@@ -632,12 +704,15 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 // Retrieve stuff in bundle
                 String url = o.getString("ForumUrl");
                 String forumname = o.getString("ForumName");
-                int numpages = o.getInt("NumPages");
 
                 // Reopen the forum.
-                openForum(url, numpages, forumname);
+                openForum(url, forumname);
             }
         });
 
+    }
+
+    public void refreshDrawer() {
+        mDrawerList.setAdapter(new DrawerAdapter(this));
     }
 }

@@ -7,28 +7,23 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.dev.flashback_v04.Item_CurrentThreads;
 import com.dev.flashback_v04.R;
-import com.dev.flashback_v04.asynctasks.special.NewThreadsParserTask;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
-
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-11-27.
  */
-public class NewThreadsAdapter extends BaseAdapter implements UpdateStuff<ArrayList<Item_CurrentThreads>> {
+public class NewThreadsAdapter extends BaseAdapter {
 
     private final LayoutInflater mInflater;
-    ArrayList<Item_CurrentThreads> mItems;
-    NewThreadsParserTask parserTask;
+    ArrayList<HashMap<String, String>> mItems;
+    private ArrayList<HashMap<String, String>> items;
 
 
     public NewThreadsAdapter(Context context) {
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        parserTask = new NewThreadsParserTask(this, context);
-        parserTask.execute("https://www.flashback.org/nya-amnen");
-        mItems = new ArrayList<Item_CurrentThreads>();
+        mItems = new ArrayList<HashMap<String, String>>();
     }
 
     @Override
@@ -69,11 +64,11 @@ public class NewThreadsAdapter extends BaseAdapter implements UpdateStuff<ArrayL
             replies = (TextView)view.findViewById(R.id.repliesCount);
             readers = (TextView)view.findViewById(R.id.readerCount);
             sourceForum = (TextView)view.findViewById(R.id.sourceForum);
-            threadName.setText(mItems.get(i).mHeadline);
-            views.setText(mItems.get(i).mViews);
-            replies.setText(mItems.get(i).mReplies);
-            readers.setText(mItems.get(i).mReaders);
-            sourceForum.setText(mItems.get(i).mSourceForum);
+            threadName.setText(mItems.get(i).get("Headline"));
+            views.setText(mItems.get(i).get("Views"));
+            replies.setText(mItems.get(i).get("Replies"));
+            readers.setText(mItems.get(i).get("Readers"));
+            sourceForum.setText(mItems.get(i).get("SourceForum"));
 
         }
 
@@ -82,18 +77,24 @@ public class NewThreadsAdapter extends BaseAdapter implements UpdateStuff<ArrayL
         replies = (TextView)view.findViewById(R.id.repliesCount);
         readers = (TextView)view.findViewById(R.id.readerCount);
         sourceForum = (TextView)view.findViewById(R.id.sourceForum);
-        threadName.setText(mItems.get(i).mHeadline);
-        views.setText(mItems.get(i).mViews);
-        replies.setText(mItems.get(i).mReplies);
-        readers.setText(mItems.get(i).mReaders);
-        sourceForum.setText(mItems.get(i).mSourceForum);
+        threadName.setText(mItems.get(i).get("Headline"));
+        views.setText(mItems.get(i).get("Views"));
+        replies.setText(mItems.get(i).get("Replies"));
+        readers.setText(mItems.get(i).get("Readers"));
+        sourceForum.setText(mItems.get(i).get("SourceForum"));
 
         return view;
     }
 
-    @Override
-    public void updateThread(ArrayList<Item_CurrentThreads> o) {
-        mItems = o;
-        notifyDataSetChanged();
+    public void putItem(HashMap<String, String> data) {
+        mItems.add(data);
+    }
+
+    public void putItems(ArrayList<HashMap<String, String>> items) {
+        mItems = items;
+    }
+
+    public ArrayList<HashMap<String, String>> getItems() {
+        return mItems;
     }
 }

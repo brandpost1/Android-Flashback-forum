@@ -5,21 +5,12 @@ import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-
-import com.dev.flashback_v04.Forum;
-import com.dev.flashback_v04.Thread;
-import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
-import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.asynctasks.ForumsParserTask;
-import com.dev.flashback_v04.asynctasks.ThreadsParserTask;
-import com.dev.flashback_v04.interfaces.OnTaskComplete;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,56 +19,31 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2013-06-17.
  */
-public class ShowThreadsAdapter extends BaseAdapter implements OnTaskComplete {
+public class ShowThreadsAdapter extends BaseAdapter {
 
 	private static final int TYPE_THREAD = 0;
 	private static final int TYPE_FORUM = 1;
 
-    public Boolean updatedthreads = false;
-    public Boolean updatedforums = false;
-
 	LayoutInflater mInflater;
 
-	// Base url
-	String baseUrl;
-	// Forum url
-	String url;
-	// The page currently being displayed
-	int currentPage = 1;
-	// Cached pages
-	HashMap<Integer, ArrayList<Thread>> mHashMap;
 	// All threads on the current page
-	ArrayList<Thread> mThreads;
+	ArrayList<HashMap<String, String>> mThreads;
 	// Any subforums that might be present
-	ArrayList<Forum> mForums;
+	ArrayList<HashMap<String, String>> mForums;
 
-	ForumsParserTask mForumsParserTask;
-	ThreadsParserTask mThreadsParserTask;
 	Context mContext;
+    private ArrayList<HashMap<String, String>> mItems;
 
-	public ShowThreadsAdapter(Context context, String forum_url) {
+    public ShowThreadsAdapter(Context context) {
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		url = forum_url;
-		baseUrl = forum_url;
 		mContext = context;
-		mHashMap = new HashMap<Integer, ArrayList<Thread>>();
-
-		mForums = new ArrayList<Forum>();
-		mThreads = new ArrayList<Thread>();
-
-		mForumsParserTask = new ForumsParserTask(this, mContext);
-		mThreadsParserTask = new ThreadsParserTask(this, mContext);
-		mForumsParserTask.execute(url);
-		mThreadsParserTask.execute(url);
-
+        mForums = new ArrayList<HashMap<String, String>>();
+        mThreads = new ArrayList<HashMap<String, String>>();
 	}
 
 	@Override
 	public int getCount() {
-		int forums = mForums.size();
-		int threads = mThreads.size();
-		int total = forums+threads;
-		return total;
+		return mForums.size() + mThreads.size();
 	}
 
 	@Override
@@ -92,7 +58,7 @@ public class ShowThreadsAdapter extends BaseAdapter implements OnTaskComplete {
 
 	@Override
 	public int getViewTypeCount() {
-		return (int)2;
+		return 2;
 	}
 
 	@Override
@@ -141,8 +107,8 @@ public class ShowThreadsAdapter extends BaseAdapter implements OnTaskComplete {
 				forumTitle = (TextView)view.findViewById(R.id.forumTitle);
 				forumInfo = (TextView)view.findViewById(R.id.forumInfo);
 
-				forumTitle.setText(mForums.get(position).getName());
-				forumInfo.setText(mForums.get(position).getInfo());
+				forumTitle.setText(mForums.get(position).get("ForumName"));
+				forumInfo.setText(mForums.get(position).get("ForumInfo"));
 				break;
 			case TYPE_THREAD:
 				threadTitle = (TextView)view.findViewById(R.id.threadTitle);
@@ -153,80 +119,48 @@ public class ShowThreadsAdapter extends BaseAdapter implements OnTaskComplete {
                 pinned = (ImageView)view.findViewById(R.id.pinned);
                 locked = (ImageView)view.findViewById(R.id.locked);
 
-                if(mThreads.get(position).getSticky()) {
+                if(mThreads.get(position).get("ThreadSticky").equals("True")) {
                     pinned.setVisibility(View.VISIBLE);
                 } else {
                     pinned.setVisibility(View.INVISIBLE);
                 }
-                if(mThreads.get(position).getLocked()) {
+                if(mThreads.get(position).get("ThreadLocked").equals("True")) {
                     locked.setVisibility(View.VISIBLE);
                 } else {
                     locked.setVisibility(View.INVISIBLE);
                 }
-				threadTitle.setText(mThreads.get(position).getThreadName());
-				threadAuthor.setText(mThreads.get(position).getThreadAuthor());
-				threadNumReplies.setText(mThreads.get(position).getThreadReplies());
-				threadViews.setText(mThreads.get(position).getThreadViews());
-                lastPost.setText(mThreads.get(position).getLastPost());
+				threadTitle.setText(mThreads.get(position).get("ThreadName"));
+				threadAuthor.setText(mThreads.get(position).get("ThreadAuthor"));
+				threadNumReplies.setText(mThreads.get(position).get("ThreadNumReplies"));
+				threadViews.setText(mThreads.get(position).get("ThreadNumViews"));
+                lastPost.setText(mThreads.get(position).get("LastPost"));
 				break;
 		}
 
 		return view;
 	}
 
-	public void updateCurrentPage() {
-		String updateUrl = this.url;
-
-		if(currentPage == 1) {
-			mForumsParserTask = new ForumsParserTask(this, mContext);
-			mThreadsParserTask = new ThreadsParserTask(this, mContext);
-			mForumsParserTask.execute(baseUrl);
-			mThreadsParserTask.execute(baseUrl);
-
-		} else {
-			updateUrl = baseUrl.concat("p"+currentPage);
-			mThreadsParserTask = new ThreadsParserTask(this, mContext);
-			mThreadsParserTask.execute(updateUrl);
-		}
-		if(mHashMap.containsKey(Integer.valueOf(currentPage))) {
-			mHashMap.remove(Integer.valueOf(currentPage));
-			mHashMap.put(Integer.valueOf(currentPage), mThreads);
-		}
-
-	}
-
-	@Override
-	public void updateForums(ArrayList<Forum> forums) {
-
-		mForums = forums;
-        ((MainActivity)mContext).supportInvalidateOptionsMenu();
-		notifyDataSetChanged();
-        updatedforums = true;
-	}
-
-	@Override
-	public void updateThreads(ArrayList<Thread> threads) {
-
-		mThreads = threads;
-		notifyDataSetChanged();
-        updatedthreads = true;
-	}
-
-	@Override
-	public void updatePosts(ArrayList<Post> mPosts) {
-		// Do nothing
-	}
-
-    @Override
-    public void updateSize(int size) {
-
-    }
-
-    public ArrayList<Forum> getForums() {
+    public ArrayList<HashMap<String, String>> getForums() {
 		return mForums;
 	}
 
-	public ArrayList<Thread> getThreads() {
+	public ArrayList<HashMap<String, String>> getThreads() {
 		return mThreads;
 	}
+
+    public void addForumItems(ArrayList<HashMap<String, String>> items) {
+        mForums = items;
+    }
+
+    public void addThreadItems(ArrayList<HashMap<String, String>> items) {
+        mThreads = items;
+    }
+
+    public void addThreadItem(HashMap<String, String> data) {
+        mThreads.add(data);
+    }
+
+    public void addForumItem(HashMap<String, String> data) {
+        mForums.add(data);
+    }
 }

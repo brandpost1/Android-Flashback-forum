@@ -4,7 +4,6 @@ package com.dev.flashback_v04.activities;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.support.v4.app.FragmentManager;
 import android.os.Bundle;
@@ -27,8 +26,7 @@ import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.adapters.DrawerAdapter;
 import com.dev.flashback_v04.asynctasks.LoginTask;
-import com.dev.flashback_v04.fragments.ShowPostsFragment;
-import com.dev.flashback_v04.fragments.WrapperFragment;
+import com.dev.flashback_v04.fragments.MainPager;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
@@ -89,7 +87,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 		* Call this to open a specific thread
 		* */
 	public void openThread(String url, int numpages, int position) {
-		Fragment fragment = new WrapperFragment();
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 3);
 		args.putInt("NumPages", numpages);
@@ -115,7 +113,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 	* Call this to open a specific forum
 	* */
 	public void openForum(String url, int size) {
-		Fragment fragment = new WrapperFragment();
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 2);
 		args.putInt("NumPages", size); //TODO: get actual number of pages in that forum. Currently set to 5
@@ -154,7 +152,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 		* Initialize fragment.
 		* Pass along arguments etc..
 		* */
-		Fragment fragment = new WrapperFragment();
+		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 1);
 		args.putInt("NumPages", 14);
@@ -276,7 +274,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 		* Each wrapperfragment contains its own viewpager.
 		* */
 		if(savedInstanceState == null) {
-			Fragment fragment = new WrapperFragment();
+			Fragment fragment = new MainPager();
 
 			Bundle args = new Bundle();
 			args.putInt("FragmentType", 0);

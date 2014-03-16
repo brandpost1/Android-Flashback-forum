@@ -9,6 +9,8 @@ import android.widget.Toast;
 
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.special.CurrentThreadsAdapter;
+import com.dev.flashback_v04.fragments.special.MyQuotesFragment;
+import com.dev.flashback_v04.interfaces.Callback;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -30,22 +33,11 @@ import java.util.Map;
  */
 public class Parser {
 
-
 	private Document currentSite;
 	private Context mContext;
-    private Connection connection;
-    private boolean isLoggedIn;
 
-	public Parser(Context context) {
+    public Parser(Context context) {
 		mContext = context;
-
-            SharedPreferences myPrefs = mContext.getSharedPreferences("session_cookie", Context.MODE_PRIVATE);
-            String loggedin = myPrefs.getString("vbscanpassword",null);
-            if(loggedin == null) {
-                isLoggedIn = false;
-            } else {
-                isLoggedIn = true;
-            }
 	}
 
     private void showErrorMsg(final String errormsg) {
@@ -141,19 +133,56 @@ public class Parser {
         return true;
     }
 
+    public boolean setUserId() {
+        try {
+            Connect("https://www.flashback.org/");
+        } catch(NullPointerException e) {
+            e.printStackTrace();
+            return false;
+            //showErrorMsg(e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+            //showErrorMsg("Failed to load number of pages.");
+        }
+        String userId = "";
+        try {
+            userId = currentSite.select("div#top-menu ul.top-menu-sub li a[href^=/u]:contains(Min profil)").attr("href").substring(2);
+        } catch (Exception e) {
+            userId = "INVALID-ID";
+            e.printStackTrace();
+        }
 
-	public ArrayList<Forum> getCategoryContent(String url) {
-        ArrayList<Forum> forumList = new ArrayList<Forum>();
+
+        try {
+            SharedPrefs.savePreference(mContext, "user", "ID", Integer.parseInt(userId));
+            //System.out.println("UserID: " + userId);
+            return true;
+        } catch(NumberFormatException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+    }
+
+    /**
+     * Retrieve all of the forums within a category
+     * @param url
+     * @param mProgressUpdate
+     * @return
+     */
+	public boolean getCategoryContent(String url, Callback<HashMap<String, String>> mProgressUpdate) {
+        HashMap<String, String> map = new HashMap<String, String>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return forumList;
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return forumList;
+            return false;
         }
 
 		Elements forums = currentSite.select("tr td.alt1Active");
@@ -161,65 +190,86 @@ public class Parser {
 		String forumName = null;
 		String forumLink = null;
 		String forumInfo = null;
-		int forumSize = 0;
+
 		String categoryName = null;
 		categoryName = currentSite.select(".list-forum-title").text();
 
 		for(Element f : forums) {
-
+            map = new HashMap<String, String>();
 			Elements n;
 
 			forumName = f.select("a").text();
 			forumLink = f.select("a[href]").attr("abs:href");
 			forumInfo = f.select(".forum-summary").text();
-			//forumSize = getSize(forumLink);
 
 			n = f.select(":has(.icon-subforum");
 			if(n.size() == 0) {
-				Forum top = new Forum();
-				top.setName(forumName);
-				top.setUrl(forumLink);
-				top.setInfo(forumInfo);
-				top.setSize(forumSize);
-				forumList.add(top);
+
+                // Put Key-value pairs in map
+                map.put("ForumName", forumName);
+                map.put("ForumLink", forumLink);
+                map.put("ForumInfo", forumInfo);
+                // Return it
+                mProgressUpdate.onTaskComplete(map);
 			}
 		}
-		return forumList;
+        return (map.size() > 0) ? true : false;
 	}
 
-
-
-    public int getSize() {
-		Document temp = currentSite;
-		int size = 0;
-
-
-        Element e = currentSite.select(".tborder tbody tr td.alignr.navcontrolbar div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").first();
-		if(e != null) {
-			String page = e.text();
-			String[] split = page.split(" ");
-			size = Integer.parseInt(split[3]);
-		} else {
-			size = 1;
-		}
-
-		currentSite = temp;
-		return size;
-	}
-
-	public ArrayList<Thread> getForumContents(String url) throws Exception {
-		ArrayList<Thread> mThreads = new ArrayList<Thread>();
-
+    /**
+     * Get the number of pages in a forum
+     * @param url
+     * @return
+     */
+    public int getForumNumPages(String url) {
         try {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return mThreads;
+            return 1;
+        } catch (IOException e) {
+            e.printStackTrace();
+            showErrorMsg("Failed to load number of pages.");
+            return 1;
+        }
+
+        int number = 1;
+        String numpages = "";
+        try {
+            numpages = currentSite.select(".tborder tbody tr td.alignr.navcontrolbar div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").first().text();
+        } catch (NullPointerException e) {
+            //e.printStackTrace();
+        }
+        String[] split = numpages.split(" ");
+        try {
+            number = Integer.parseInt(split[3]);
+        } catch (Exception e) {
+            //e.printStackTrace();
+        }
+
+        return number;
+    }
+
+    /**
+     * Retrieve all of the threads in a forum
+     * @param url
+     * @param mProgressUpdate
+     * @return
+     * @throws Exception
+     */
+	public boolean getForumContents(String url, Callback mProgressUpdate) throws Exception {
+        HashMap<String, String> map = new HashMap<String, String>();
+        try {
+            Connect(url);
+        } catch(NullPointerException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return mThreads;
+            return false;
         }
 
 		String name;
@@ -242,12 +292,11 @@ public class Parser {
 		// Number of views
 		// #threadslist tr td.alt2.td_views
 
-        int size = getSize();
-        SharedPrefs.savePreference(mContext, "forum_size", "size", size);
 		Elements threads = currentSite.select("#threadslist tr:not(:has(td.alt1.threadslist-announcement)):has(td.alt1.td_status):not(.tr_sticky)");
         Elements sticky = currentSite.select("#threadslist tr.tr_sticky");
 
         for(Element st : sticky) {
+            map = new java.util.HashMap<String, String>();
             name = st.select("td.alt1.td_title a[id^=thread_title]").text();
             link = st.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
             author = st.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
@@ -268,27 +317,25 @@ public class Parser {
                 pages = "1";
             }
             lastPage = link.concat("p"+pages);
-                //if(!name.equals("")) {
-                    // Create new thread-object
-                Thread thread = new Thread();
-                // Set values
-                thread.setThreadName(name);
 
-                thread.setThreadAuthor(author);
-                thread.setLastPageUrl(lastPage);
-                thread.setNumPages(pages);
-                thread.setThreadLink(link);
-                thread.setThreadReplies(numReplies);
-                thread.setThreadViews(views);
-                thread.setSticky(true);
-                thread.setLocked(locked);
-                thread.setLastPost(lastPost);
-                // Add to list
-                mThreads.add(thread);
-            //}
+            map.put("ThreadAuthor", author);
+            map.put("ThreadName", name);
+            map.put("ThreadLink", link);
+            map.put("ThreadSticky", "true");
+            map.put("ThreadLocked", Boolean.toString(locked));
+            map.put("ThreadNumReplies", numReplies);
+            map.put("ThreadNumViews", views);
+            map.put("LastPost", lastPost);
+            map.put("ThreadLink", link);
+            map.put("ThreadNumPages", pages);
+            map.put("LastPageUrl", lastPage);
+
+            mProgressUpdate.onTaskComplete(map);
+
         }
 
 		for(Element e : threads) {
+            map = new java.util.HashMap<String, String>();
             name = e.select("td.alt1.td_title a[id^=thread_title]").text();
             link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
             author = e.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
@@ -309,28 +356,59 @@ public class Parser {
                 pages = "1";
             }
             lastPage = link.concat("p"+pages);
-            //if(!name.equals("")) {
-                // Create new thread-object
-                Thread thread = new Thread();
-                // Set values
-                thread.setThreadName(name);
 
-                thread.setThreadAuthor(author);
-                thread.setLastPageUrl(lastPage);
-                thread.setNumPages(pages);
-                thread.setThreadLink(link);
-                thread.setThreadReplies(numReplies);
-                thread.setThreadViews(views);
-                thread.setSticky(false);
-                thread.setLocked(locked);
-                thread.setLastPost(lastPost);
-                // Add to list
-                mThreads.add(thread);
-            //}
+            map.put("ThreadAuthor", author);
+            map.put("ThreadName", name);
+            map.put("ThreadLink", link);
+            map.put("ThreadSticky", "false");
+            map.put("ThreadLocked", Boolean.toString(locked));
+            map.put("ThreadNumReplies", numReplies);
+            map.put("ThreadNumViews", views);
+            map.put("LastPost", lastPost);
+            map.put("ThreadLink", link);
+            map.put("ThreadNumPages", pages);
+            map.put("LastPageUrl", lastPage);
+
+            mProgressUpdate.onTaskComplete(map);
+
         }
-		return mThreads;
+		return (map.size() > 0) ? true : false;
 	}
 
+	/**
+	 * Does not have a connect of its own, so has to be called directly after a call to a function that does.
+	 * @param url
+	 * @return
+	 */
+	public int getThreadPosition(String url) {
+		int threadPos = 0;
+
+		String temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").text();
+		if(!temp.equals(""))
+			threadPos = Integer.parseInt(temp);
+
+		return threadPos;
+	}
+
+	/**
+	 * Does not have a connect of its own, so has to be called directly after a call to a function that does.
+	 * @param url
+	 * @return
+	 */
+	public int getThreadId(String url) {
+		int threadId = 0;
+
+		String temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
+		threadId = Integer.parseInt(temp.split("/t")[1]);
+
+		return threadId;
+	}
+
+    /**
+     * Get the number of pages in a thread
+     * @param url
+     * @return
+     */
     public int getThreadNumPages(String url) {
         try {
             Connect(url);
@@ -361,38 +439,12 @@ public class Parser {
         return number;
     }
 
-    public boolean setUserId() {
-        try {
-            Connect("https://www.flashback.org/");
-        } catch(NullPointerException e) {
-            e.printStackTrace();
-            return false;
-            //showErrorMsg(e.getMessage());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-           //showErrorMsg("Failed to load number of pages.");
-        }
-        String userId = "";
-        try {
-            userId = currentSite.select("div#top-menu ul.top-menu-sub li a[href^=/u]:contains(Min profil)").attr("href").substring(2);
-        } catch (Exception e) {
-            userId = "INVALID-ID";
-            e.printStackTrace();
-        }
-
-
-        try {
-            SharedPrefs.savePreference(mContext, "user", "ID", Integer.parseInt(userId));
-            //System.out.println("UserID: " + userId);
-            return true;
-        } catch(NumberFormatException e) {
-            e.printStackTrace();
-            return false;
-        }
-
-    }
-
+    /**
+     * Retrieves all of the posts from a page in a thread.
+     * Probably needs some work
+     * @param url
+     * @return
+     */
 	public ArrayList<Post> getThreadContent(String url) {
         ArrayList<Post> postArrayList = new ArrayList<Post>();
         try {
@@ -422,8 +474,8 @@ public class Parser {
 		for(Element post : posts) {
 			final Post newPost = new Post();
 
-			date = post.select("table tbody tr td.thead.post-date").text();
-            date = date.substring(0, date.indexOf("#"));
+			date = post.select("table tbody tr td.thead.post-date").first().ownText();
+            //date = date.substring(0, date.indexOf("#"));
 			orderNr = "#" + post.select("table tbody tr td.thead.post-date span a").text();
             postUrl = post.select("table tbody tr td.thead.post-date span a").attr("abs:href");
 			author = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
@@ -787,19 +839,25 @@ public class Parser {
         return postArrayList;
 	}
 
-    public ArrayList<Item_CurrentThreads> getCurrent(String url) {
+    /**
+     * Retrieves all of the items for "Aktuella ämnen", or "Current threads", and
+     * posts them back via callback.
+     * @param url
+     * @param mProgressUpdate
+     * @return
+     */
+    public boolean getCurrent(String url, Callback mProgressUpdate) {
 
-        ArrayList<Item_CurrentThreads> currentList = new ArrayList<Item_CurrentThreads>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return currentList;
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return currentList;
+            return false;
         }
 
         String categoryName = "";
@@ -818,10 +876,13 @@ public class Parser {
         for(int i = 0; i < categories.size(); i++) {
 
             categoryName = categories.get(i).select("tr:eq(0) td:eq(1)").text();
-            Item_CurrentThreads newItem = new Item_CurrentThreads();
-            newItem.mType = CurrentThreadsAdapter.ITEM_HEADER;
-            newItem.mHeadline = categoryName;
-            currentList.add(newItem);
+
+            HashMap<String, String> newItem = new HashMap<String, String>();
+            newItem.put("Type", Integer.toString(CurrentThreadsAdapter.ITEM_HEADER));
+            newItem.put("Headline", categoryName);
+
+            mProgressUpdate.onTaskComplete(newItem);
+
             for(int j = 0; j < categories.get(i).select("tr:not(:first-child)").size(); j++) {
 
                 threadLink = categories.get(i).select("tr:not(:first-child) td:eq(1) a:first-child").get(j).attr("abs:href");
@@ -830,33 +891,41 @@ public class Parser {
                 readers = categories.get(i).select("tr:not(:first-child) td:eq(3)").get(j).text();
                 views  = categories.get(i).select("tr:not(:first-child) td:eq(4)").get(j).text();
                 replies = categories.get(i).select("tr:not(:first-child) td:eq(5)").get(j).text();
-                Item_CurrentThreads newThread = new Item_CurrentThreads();
-                newThread.mType = CurrentThreadsAdapter.ITEM_ROW;
-                newThread.mHeadline = threadName;
-                newThread.mReaders = readers;
-                newThread.mViews = views;
-                newThread.mReplies = replies;
-                newThread.mSourceForum = forumName;
-                newThread.mLink = threadLink;
-                currentList.add(newThread);
+
+                HashMap<String, String> newThread = new HashMap<String, String>();
+                newThread.put("Type", Integer.toString(CurrentThreadsAdapter.ITEM_ROW));
+                newThread.put("Headline", threadName);
+                newThread.put("Readers", readers);
+                newThread.put("Views", views);
+                newThread.put("Replies", replies);
+                newThread.put("SourceForum", forumName);
+                newThread.put("Link", threadLink);
+
+                mProgressUpdate.onTaskComplete(newThread);
             }
         }
-        return currentList;
+        return true;
     }
 
-    public ArrayList<Item_CurrentThreads> getNewThreads(String url) {
+    /**
+     * Retrieves all of the newly created threads and posts them back
+     * one at a time via callback.
+     * @param url
+     * @param mProgressUpdate
+     * @return
+     */
+    public boolean getNewThreads(String url, Callback mProgressUpdate) {
 
-        ArrayList<Item_CurrentThreads> newList = new ArrayList<Item_CurrentThreads>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return newList;
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
             showErrorMsg(e.getMessage());
-            return newList;
+            return false;
         }
 
         String threadLink = "";
@@ -877,22 +946,271 @@ public class Parser {
             views  = e.select("td:eq(4)").text();
             replies = e.select("td:eq(5)").text();
 
-            Item_CurrentThreads newThread = new Item_CurrentThreads();
-            newThread.mHeadline = threadName;
-            newThread.mReaders = readers;
-            newThread.mViews = views;
-            newThread.mReplies = replies;
-            newThread.mSourceForum = forumName;
-            newThread.mLink = threadLink;
-            newList.add(newThread);
+            HashMap<String, String> newThread = new HashMap<String, String>();
+            newThread.put("Headline", threadName);
+            newThread.put("Readers", readers);
+            newThread.put("Views", views);
+            newThread.put("Replies", replies);
+            newThread.put("SourceForum", forumName);
+            newThread.put("Link", threadLink);
+
+            mProgressUpdate.onTaskComplete(newThread);
         }
-        return newList;
+        return true;
     }
 
+    /**
+     * Retrieves all new posts and posts them back
+     * one at a time via callback.
+     * @param url
+     * @param mProgressUpdate
+     * @return
+     */
+    public boolean getNewPosts(String url, Callback mProgressUpdate) {
+
+        try {
+            Connect(url);
+        } catch(NullPointerException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return false;
+        }
+
+        String threadLink = "";
+        String threadName = "";
+        String forumLink = "";
+        String forumName = "";
+        String readers = "";
+        String replies = "";
+        String views = "";
+
+        Elements elements = currentSite.select("table.tborder.threadslist tbody tr:not(:first-child)");
+
+        for(Element e : elements) {
+            threadLink = e.select("td:eq(1) a:first-child").attr("abs:href");
+            threadName = e.select("td:eq(1) a:first-child").text();
+            forumName = e.select("td:eq(1) a:eq(1)").text();
+            readers = e.select("td:eq(3)").text();
+            views  = e.select("td:eq(4)").text();
+            replies = e.select("td:eq(5)").text();
+
+            HashMap<String, String> newPost = new HashMap<String, String>();
+            newPost.put("Headline", threadName);
+            newPost.put("Readers", readers);
+            newPost.put("Views", views);
+            newPost.put("Replies", replies);
+            newPost.put("SourceForum", forumName);
+            newPost.put("Link", threadLink);
+
+            mProgressUpdate.onTaskComplete(newPost);
+        }
+        return true;
+    }
+
+    /**
+     * Retrieves all of the received private messages from one page
+     * @param url
+     */
     public void getPrivateMessages(String url) {
         // Get categories
         // form[method=post] table.tborder.p2-4 tbody[id]
 
+    }
+
+    public int myPostsPages(String url) {
+        return myQuotesPages(url);
+    }
+
+    public boolean getMyPosts(String url, Callback itemcallback) {
+		getMyQuotes(url, itemcallback);
+        return true;
+    }
+
+
+    public int myThreadsPages(String url) {
+        return myQuotesPages(url);
+    }
+
+    public boolean getMyThreads(String url, Callback mProgressUpdate) {
+		HashMap<String, String> map;
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		} catch (IOException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		}
+
+		String name;
+		String link;
+		String views;
+		String author;
+		String numReplies;
+		String pages;
+		String lastPage;
+		String lastPost;
+		Boolean locked;
+
+
+		Elements threads = currentSite.select("table.tborder.threadslist tbody tr:not(:first-child)");
+
+		for(Element e : threads) {
+			map = new HashMap<String, String>();
+			name = e.select("td.alt1.td_title a[id^=thread_title]").text();
+			link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
+			author = e.select("div.smallfont.thread-poster span").text();
+			views = e.select("td.alt2.td_views").text();
+			numReplies = e.select("td.alt1.td_replies a").text();
+			pages = e.select("td.alt1.td_title a.thread-pagenav-lastpage").text();
+			lastPost = e.select("td.alt2.td_last_post").text();
+
+			if(e.select("td.alt1.td_status a.clear.icon-thread-lock").isEmpty()) {
+				locked = false;
+			} else {
+				locked = true;
+			}
+
+			if(!pages.equals("")) {
+				pages = pages.substring(1, pages.length()-1);
+			} else {
+				pages = "1";
+			}
+			lastPage = link.concat("p"+pages);
+
+			map.put("ThreadAuthor", author);
+			map.put("ThreadName", name);
+			map.put("ThreadLink", link);
+			map.put("ThreadSticky", "false");
+			map.put("ThreadLocked", Boolean.toString(locked));
+			map.put("ThreadNumReplies", numReplies);
+			map.put("ThreadNumViews", views);
+			map.put("LastPost", lastPost);
+			map.put("ThreadLink", link);
+			map.put("ThreadNumPages", pages);
+			map.put("LastPageUrl", lastPage);
+
+			mProgressUpdate.onTaskComplete(map);
+		}
+        return true;
+    }
+
+    /**
+     * Retrieves the number of pages for "My quoted posts"
+     * @param url
+     * @return
+     */
+    public int myQuotesPages(String url) {
+        try {
+            Connect(url);
+        } catch(NullPointerException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return 1;
+        } catch (IOException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return 1;
+        }
+
+        String temp = currentSite.select("table.tborder.p2-4 tr td.vbmenu_control.smallfont2.delim").text();
+        if(temp.isEmpty()) {
+            return 1;
+        }
+        String[] tempArray = temp.split(" ");
+        String pages = "";
+        try {
+            pages = tempArray[3];
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return 1;
+        }
+        int numPages = 1;
+        try {
+            numPages = Integer.parseInt(pages);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            return 1;
+        }
+
+        return numPages;
+    }
+
+    /**
+     * Retrieves all of the "My quoted posts" from one page and returns them
+     * one a time
+     * @param url
+     * @param itemcallback
+     * @return
+     */
+    public boolean getMyQuotes(String url, Callback itemcallback) {
+
+        HashMap<String, String> map;
+        ArrayList<HashMap<String, String>> newList = new ArrayList<HashMap<String, String>>();
+        try {
+            Connect(url);
+        } catch(NullPointerException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            showErrorMsg(e.getMessage());
+            return false;
+        }
+
+        String inForum;
+        String forumLink;
+        String date;
+        String postedBy;
+        String threadTitle;
+        String threadLink;
+        String messageText;
+
+        Elements posts = currentSite.select("div#posts table.p4");
+
+        for(int i = 0; i < posts.size(); i++) {
+            map = new HashMap<String, String>();
+            inForum = posts.get(i).select("td.thead span a").text();
+            forumLink = posts.get(i).select("td.thead span a").attr("abs:href");
+            date = posts.get(i).select("td.thead").first().ownText();
+            postedBy = posts.get(i).select("td.alt1 > div.smallfont a").text();
+            threadTitle = posts.get(i).select("td.alt1 > div a[href^=/t]").text();
+            threadLink = posts.get(i).select("td.alt1 div.alt2.post-quote div em a[href^=/p]").attr("abs:href");
+            threadLink = threadLink.substring(0, threadLink.lastIndexOf("#"));
+
+            // Get html of message
+            messageText = posts.get(i).select("td.alt1 div.alt2.post-quote em").html();
+            // Replace newlines
+            Element message = Jsoup.parse(messageText.replaceAll("(?i)<br[^>]*> *", "[newline]"));
+            // Remove link-tag
+            message.select("a").remove();
+            // Remove first two newlines
+            messageText = message.text().substring(18);
+            // Get actual message and put newline character
+            messageText = messageText.replace("[newline]", "\n");
+
+            map.put("ForumName", inForum);
+            map.put("ForumLink", forumLink);
+            map.put("Date", date);
+            map.put("PostedBy", postedBy);
+            map.put("ThreadTitle", threadTitle);
+            map.put("ThreadLink", threadLink);
+            map.put("MessageText", messageText);
+
+            newList.add(map);
+
+            if(itemcallback != null)
+                itemcallback.onTaskComplete(map);
+        }
+        return true;
     }
 
 }

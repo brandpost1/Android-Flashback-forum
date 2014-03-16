@@ -1,12 +1,14 @@
 package com.dev.flashback_v04.fragments;
 
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
@@ -27,11 +29,10 @@ import android.widget.Toast;
 
 import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
-import com.dev.flashback_v04.asynctasks.UpdateThreadTask;
-import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
+
 import android.support.v7.widget.ShareActionProvider;
 
 /**
@@ -49,37 +50,19 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
     ShareActionProvider mShare;
 
     Activity mActivity;
-    // Activity must implement this
-    OnOptionSelectedListener mListener;
-    UpdateStuff mCallback;
 
-	public ShowPostsFragment() {
-
-	}
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         mActivity = activity;
-        try{
-            mListener = (OnOptionSelectedListener) activity;
-        } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString() + " must implement OnArticleSelectedListener");
-        }
-        try {
-            mCallback = (UpdateStuff) activity;
-        } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString() + " must implement UpdateStuff");
-        }
     }
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        // Show number of pages in thread
-        //inflater.inflate(R.menu.show_pages, menu);
         // Show updatebutton
+        menu.clear();
         inflater.inflate(R.menu.thread_default_menu, menu);
-
 
         SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
         boolean shareActivated = appPrefs.getBoolean("thread_sharebutton", false);
@@ -104,24 +87,33 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
         // If logged in, show new reply button in thread.
         try {
             if(LoginHandler.loggedIn(mActivity) && mAdapter.getCount() > 0)
-                inflater.inflate(R.menu.thread, menu);
+                inflater.inflate(R.menu.thread_reply, menu);
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
 		super.onCreateOptionsMenu(menu, inflater);
 	}
 
-	@Override
+    @Override
+    public void onPause() {
+        super.onPause();
+        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
+    }
+
+    @Override
 	public void onCreate(Bundle savedInstanceState) {
 		setHasOptionsMenu(true);
-        try {
-            selected_page = getArguments().getInt("index") + 1;
-            selected_page_base = getArguments().getInt("index");
-            thread_url = getArguments().getString("Url");
-            thread_url_withpagenr = thread_url.concat("p"+selected_page);
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        }
+
+		thread_url = getArguments().getString("Url");
+		selected_page = getArguments().getInt("index") + 1;
+		selected_page_base = getArguments().getInt("index");
+		thread_url_withpagenr = thread_url.concat("p"+selected_page);
 
         if(mAdapter == null) {		// Don't know if this is needed
             mAdapter = new ShowPostsAdapter(mActivity,this, thread_url_withpagenr);
@@ -139,16 +131,14 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                 args.putString("Url", thread_url);
                 args.putInt("CurrentPage", selected_page_base);
                 args.putString("ThreadName", getArguments().getString("ThreadName"));
-
-                mListener.onOptionSelected(item.getItemId(), args);
+                ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
                 break;
              case R.id.thread_update:
                 Bundle updatebundle = new Bundle();
                 updatebundle.putInt("CurrentPage", selected_page_base);
                 updatebundle.putString("Url", thread_url);
                 updatebundle.putString("ThreadName", getArguments().getString("ThreadName"));
-                UpdateThreadTask updateThreadTask = new UpdateThreadTask(mActivity, updatebundle);
-                updateThreadTask.execute();
+                ((MainActivity)mActivity).updateThread(updatebundle);
                 break;
             case R.id.thread_openinbrowser:
                 String url = thread_url_withpagenr;
@@ -170,14 +160,15 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                             .setTitle("Välj sida")
                             .setView(v)
                             .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+                                @TargetApi(Build.VERSION_CODES.HONEYCOMB)
                                 @Override
                                 public void onClick(DialogInterface dialogInterface, int i) {
                                     Bundle gotobundle = new Bundle();
-                                    gotobundle.putInt("CurrentPage", picker.getValue()-1);
+                                    gotobundle.putInt("CurrentPage", picker.getValue());
                                     gotobundle.putString("Url", thread_url);
                                     gotobundle.putString("ThreadName", getArguments().getString("ThreadName"));
-                                    UpdateThreadTask gototPageTask = new UpdateThreadTask(mActivity, gotobundle);
-                                    gototPageTask.execute();
+                                    ((MainActivity)mActivity).updateThread(gotobundle);
                                 }
                             }).create();
                     pagepicker.show();
@@ -205,8 +196,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                                         gotobundle.putInt("CurrentPage", page-1);
                                         gotobundle.putString("Url", thread_url);
                                         gotobundle.putString("ThreadName", getArguments().getString("ThreadName"));
-                                        UpdateThreadTask gototPageTask = new UpdateThreadTask(mActivity, gotobundle);
-                                        gototPageTask.execute();
+                                        ((MainActivity)mActivity).updateThread(gotobundle);
                                     } else {
                                         Toast.makeText(mActivity, "Sidan existerar inte", Toast.LENGTH_SHORT).show();
                                     }
@@ -248,7 +238,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.list_fragment_layout, container, false);
+        View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
 
         TextView header = (TextView)view.findViewById(R.id.headerleft);
         TextView headerright = (TextView)view.findViewById(R.id.headerright);
@@ -256,21 +246,11 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
         String page = "Sida " + (getArguments().getInt("index") + 1) + " av " + numPages;
         String threadname = getArguments().getString("ThreadName");
 
-        int len = getResources().getInteger(R.integer.header_max_length);
-        String showthisname;
-
-        try {
-            if (threadname.length() >= len) {
-                showthisname = threadname.substring(0, len)+ "...";
-            } else {
-                showthisname = threadname;
-            }
-        } catch (NullPointerException e) {
-            showthisname = "Error-name";
-            e.printStackTrace();
+        if(threadname == null) {
+            threadname = "Error-name";
         }
 
-        header.setText(showthisname);
+        header.setText(threadname);
         headerright.setText(page);
 
 		return view;
@@ -305,7 +285,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
         b.putInt("CurrentPage", selected_page_base);
         b.putString("ThreadName", getArguments().getString("ThreadName"));
 
-        mListener.onOptionSelected(R.id.thread_new_reply, b);
+        ((MainActivity)mActivity).onOptionSelected(R.id.thread_new_reply, b);
     }
 
     @Override

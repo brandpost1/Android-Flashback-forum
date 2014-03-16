@@ -3,27 +3,25 @@ package com.dev.flashback_v04.adapters;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
+
 import android.graphics.drawable.Drawable;
-import android.os.Build;
+
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.text.Html;
+
 import android.text.InputType;
 import android.text.Spannable;
-import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebView;
+
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+
 
 import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.activities.MainActivity;
@@ -32,7 +30,6 @@ import com.dev.flashback_v04.interfaces.OnTaskComplete;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 
@@ -455,16 +452,6 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
     }
 
 	@Override
-	public void updateForums(ArrayList<Forum> forums) {
-
-	}
-
-	@Override
-	public void updateThreads(ArrayList<com.dev.flashback_v04.Thread> mThreads) {
-
-	}
-
-	@Override
 	public void updatePosts(ArrayList<Post> posts) {
 		mPostArrayList = posts;
 
@@ -524,9 +511,4 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         }
 		notifyDataSetChanged();
 	}
-
-    @Override
-    public void updateSize(int size) {
-
-    }
 }

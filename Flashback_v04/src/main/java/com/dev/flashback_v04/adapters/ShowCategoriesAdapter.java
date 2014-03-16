@@ -4,22 +4,19 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.view.animation.TranslateAnimation;
+
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.dev.flashback_v04.Category;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.XMLParser;
-import com.dev.flashback_v04.activities.MainActivity;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-06-17.
@@ -27,7 +24,7 @@ import java.util.ArrayList;
 public class ShowCategoriesAdapter extends BaseAdapter {
 
 	Context mContext;
-	ArrayList<Category> mCategories;
+	ArrayList<HashMap<String, String>> mCategories;
 	XmlPullParser parser;
 	XMLParser mParser;
 	LayoutInflater mInflater;
@@ -38,7 +35,7 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 	public ShowCategoriesAdapter(Context context) {
 
 		mContext = context;
-		mCategories = new ArrayList<Category>();
+		mCategories = new ArrayList<HashMap<String, String>>();
 		mParser = new XMLParser(context);
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
@@ -52,7 +49,7 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 		}
 	}
 
-	public ArrayList<Category> getCategories() {
+	public ArrayList<HashMap<String, String>> getCategories() {
 		return mCategories;
 	}
 
@@ -79,8 +76,9 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 			view = mInflater.inflate(R.layout.category_item,null);
 		}
 		big = (TextView)view.findViewById(R.id.textView);
-		big.setText(mCategories.get(i).getName());
+		big.setText(mCategories.get(i).get("Name"));
 
 		return view;
 	}
+
 }

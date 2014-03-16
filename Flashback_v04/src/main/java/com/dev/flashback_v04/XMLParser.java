@@ -10,6 +10,7 @@ import org.xmlpull.v1.XmlPullParserException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -19,9 +20,7 @@ import java.util.List;
 public class XMLParser {
 
 	private Context mContext;
-	private ArrayList<Category> categories = null;
-	private ArrayList<Forum> mForums = null;
-	private Document currentSite = null;
+	private ArrayList<HashMap<String, String>> categories = null;
 
 	InputStream in = null;
 
@@ -62,9 +61,9 @@ public class XMLParser {
 			2. Call getLocalXML() with the filename of the local xml-file, stored in the "assets"-folder, and assign it to the previously created SmlPullParser variable.
 			3. Create an ArrayList<Category> where you intend to call this method and assign this method call to that variable. Also pass the previously created XmlPullParser variable as the argument.
 	 */
-	public List readCategories(XmlPullParser parser) throws IOException, XmlPullParserException {
+	public ArrayList<HashMap<String, String>> readCategories(XmlPullParser parser) throws IOException, XmlPullParserException {
 
-			categories = new ArrayList<Category>();
+			categories = new ArrayList<HashMap<String, String>>();
 
 
 			int eventType = parser.getEventType();
@@ -76,13 +75,13 @@ public class XMLParser {
 					case XmlPullParser.START_TAG:
 						String tagName = parser.getName();
 						if(tagName.equals("category")) {
-							categories.add(new Category());
+							categories.add(new HashMap<String, String>());
 						} else if(tagName.equals("category_id")) {
-							categories.get(categories.size()-1).setID(Integer.parseInt(parser.nextText()));
+							categories.get(categories.size()-1).put("ID", parser.nextText());
 						} else if(tagName.equals("category_name")) {
-							categories.get(categories.size()-1).setName(parser.nextText());
+							categories.get(categories.size()-1).put("Name", parser.nextText());
 						} else if(tagName.equals("category_link")) {
-							categories.get(categories.size()-1).setLink(parser.nextText());
+							categories.get(categories.size()-1).put("Link", parser.nextText());
 						}
 
 						break;
