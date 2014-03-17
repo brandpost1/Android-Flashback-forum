@@ -384,8 +384,13 @@ public class Parser {
 		int threadPos = 0;
 
 		String temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").text();
-		if(!temp.equals(""))
-			threadPos = Integer.parseInt(temp);
+		if(!temp.equals("")) {
+			try {
+				threadPos = Integer.parseInt(temp);
+			} catch (NumberFormatException e) {
+				e.printStackTrace();
+			}
+		}
 
 		return threadPos;
 	}
@@ -399,7 +404,11 @@ public class Parser {
 		int threadId = 0;
 
 		String temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
-		threadId = Integer.parseInt(temp.split("/t")[1]);
+		try {
+			threadId = Integer.parseInt(temp.split("/t")[1]);
+		} catch (IndexOutOfBoundsException e) {
+			showErrorMsg("Error - Could not get threadId");
+		}
 
 		return threadId;
 	}
@@ -429,7 +438,7 @@ public class Parser {
             String page = array[3];
             number = Integer.parseInt(page);
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Exception parsing number of pages caught! And fixed.");
+            System.out.println("Error - Could not get number of pages in thread.");
             number = 1;
         } catch (NumberFormatException e) {
             e.printStackTrace();
