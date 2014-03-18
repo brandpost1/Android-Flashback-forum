@@ -403,10 +403,14 @@ public class Parser {
 	public int getThreadId(String url) {
 		int threadId = 0;
 
-		String temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
+		String temp;
+
 		try {
+			temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
 			threadId = Integer.parseInt(temp.split("/t")[1]);
 		} catch (IndexOutOfBoundsException e) {
+			showErrorMsg("Error - Could not get threadId");
+		} catch (NullPointerException e) {
 			showErrorMsg("Error - Could not get threadId");
 		}
 
