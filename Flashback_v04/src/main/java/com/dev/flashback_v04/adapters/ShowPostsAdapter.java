@@ -279,6 +279,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
                     message.setText(smileymessage);
+					message.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 }
                 break;
             case POST_SPOILER:
@@ -290,6 +291,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     String text = (String)spoiler.getTag(R.id.SPOILER_MESSAGE);
                     Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
                     spoiler.setText(smileyspoiler);
+					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 }
                 spoiler.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -328,6 +330,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
                     quote.setText(smileymessage);
+					quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 }
                 break;
             case POST_QUOTE_SPOILER:
@@ -339,6 +342,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     String text = (String)spoiler.getTag(R.id.QUOTE_SPOILER_MESSAGE);
                     Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
                     spoiler.setText(smileyspoiler);
+					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 }
                 spoiler.setOnClickListener(new View.OnClickListener() {
                     @Override

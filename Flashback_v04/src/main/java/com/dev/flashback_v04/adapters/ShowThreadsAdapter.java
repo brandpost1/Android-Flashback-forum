@@ -119,12 +119,12 @@ public class ShowThreadsAdapter extends BaseAdapter {
                 pinned = (ImageView)view.findViewById(R.id.pinned);
                 locked = (ImageView)view.findViewById(R.id.locked);
 
-                if(mThreads.get(position).get("ThreadSticky").equals("True")) {
+                if(mThreads.get(position).get("ThreadSticky").equals("true")) {
                     pinned.setVisibility(View.VISIBLE);
                 } else {
                     pinned.setVisibility(View.INVISIBLE);
                 }
-                if(mThreads.get(position).get("ThreadLocked").equals("True")) {
+                if(mThreads.get(position).get("ThreadLocked").equals("true")) {
                     locked.setVisibility(View.VISIBLE);
                 } else {
                     locked.setVisibility(View.INVISIBLE);
