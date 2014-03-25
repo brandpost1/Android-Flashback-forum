@@ -15,10 +15,10 @@ import android.view.ViewGroup;
 
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
-import com.dev.flashback_v04.SharedPrefs;
-import com.dev.flashback_v04.fragments.special.MyPostsFragment;
+import com.dev.flashback_v04.fragments.special.UserPostsFragment;
 import com.dev.flashback_v04.fragments.special.MyQuotesFragment;
-import com.dev.flashback_v04.fragments.special.MyThreadsFragment;
+import com.dev.flashback_v04.fragments.special.MySubscriptionsFragment;
+import com.dev.flashback_v04.fragments.special.UserThreadsFragment;
 import com.dev.flashback_v04.interfaces.Callback;
 
 /**
@@ -58,6 +58,10 @@ public class SecondaryPager extends Fragment {
                 case 2:
                     result = mParser.myPostsPages(url);
                     break;
+				// Subscriptions
+				case 3:
+					result = mParser.getSubscriptionPages(url);
+					break;
             }
             return result;
         }
@@ -127,18 +131,37 @@ public class SecondaryPager extends Fragment {
             String fragmentType = String.valueOf(this.fragmentType);
             String url = "";
 
-            String userId = Integer.toString(SharedPrefs.getPreference(mActivity, "user", "ID"));
+            String userId = getArguments().getString("UserId");
+			String searchQuery = getArguments().getString("SearchQuery");
             switch (this.fragmentType) {
                 case 0:
                     String userName = PreferenceManager.getDefaultSharedPreferences(mActivity).getString("UserName", "");
                     url = "https://www.flashback.org/sok/quote=" + userName + "?sp=1&so=d";
                     break;
                 case 1:
+					if(searchQuery != null) {
+						url = searchQuery;
+						mPagerBundle.putString("Search", searchQuery);
+						break;
+					}
                     url = "https://www.flashback.org/find_threads_by_user.php?userid=" + userId;
                     break;
                 case 2:
-                    url = "https://www.flashback.org/find_posts_by_user.php?userid=" + userId;
+					String threadId = getArguments().getString("ThreadId");
+					if(searchQuery != null) {
+						url = searchQuery;
+						mPagerBundle.putString("Search", searchQuery);
+						break;
+					}
+					if(threadId == null) {
+						url = "https://www.flashback.org/find_posts_by_user.php?userid=" + userId;
+					} else {
+						url = "https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&threadid=" + threadId;
+					}
                     break;
+				case 3:
+					url = "https://www.flashback.org/subscription.php?folderid=all";
+					break;
             }
 
             mGetSizeTask = new GetSizeTask(mActivity, mCallback);
@@ -209,19 +232,33 @@ public class SecondaryPager extends Fragment {
                     myQuotes.setArguments(myQuotesBundle);
                     return myQuotes;
                 case 1:
-                    MyThreadsFragment myThreads = new MyThreadsFragment();
+                    UserThreadsFragment myThreads = new UserThreadsFragment();
                     Bundle myThreadsBundle = new Bundle();
                     myThreadsBundle.putInt("PageNumber", index+1);
                     myThreadsBundle.putInt("NumPages", NUM_PAGES);
-                    myThreads.setArguments(myThreadsBundle);
+                    myThreadsBundle.putString("ForumId", mData.getString("ForumId"));
+					myThreadsBundle.putString("UserId", mData.getString("UserId"));
+					myThreadsBundle.putString("Search", mData.getString("Search"));
+					myThreads.setArguments(myThreadsBundle);
                     return myThreads;
                 case 2:
-					MyPostsFragment myPosts = new MyPostsFragment();
+					UserPostsFragment myPosts = new UserPostsFragment();
 					Bundle myPostsBundle = new Bundle();
 					myPostsBundle.putInt("PageNumber", index+1);
 					myPostsBundle.putInt("NumPages", NUM_PAGES);
+					myPostsBundle.putString("UserId", mData.getString("UserId"));
+					myPostsBundle.putString("ThreadId", mData.getString("ThreadId"));
+					myPostsBundle.putString("Search", mData.getString("Search"));
 					myPosts.setArguments(myPostsBundle);
 					return myPosts;
+				case 3:
+					MySubscriptionsFragment mySubs = new MySubscriptionsFragment();
+					Bundle mySubsBundle = new Bundle();
+					mySubsBundle.putInt("PageNumber", index+1);
+					mySubsBundle.putInt("NumPages", NUM_PAGES);
+					mySubs.setArguments(mySubsBundle);
+					return mySubs;
+
             }
             return null;
         }

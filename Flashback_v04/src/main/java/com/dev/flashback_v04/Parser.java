@@ -156,7 +156,7 @@ public class Parser {
 
         try {
             SharedPrefs.savePreference(mContext, "user", "ID", Integer.parseInt(userId));
-            //System.out.println("UserID: " + userId);
+            //"UserID: " + userId);
             return true;
         } catch(NumberFormatException e) {
             e.printStackTrace();
@@ -237,7 +237,7 @@ public class Parser {
         int number = 1;
         String numpages = "";
         try {
-            numpages = currentSite.select(".tborder tbody tr td.alignr.navcontrolbar div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").first().text();
+			numpages = currentSite.select(".tborder tbody tr td.alignr.navcontrolbar div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").first().text();
         } catch (NullPointerException e) {
             //e.printStackTrace();
         }
@@ -442,7 +442,6 @@ public class Parser {
             String page = array[3];
             number = Integer.parseInt(page);
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Error - Could not get number of pages in thread.");
             number = 1;
         } catch (NumberFormatException e) {
             e.printStackTrace();
@@ -481,23 +480,28 @@ public class Parser {
 		String userProfileUrl;
 		String regdate;
         String postUrl;
+		String threadId = null;
+
+		if(url.contains("/t")) {
+			threadId = url.split("/t")[1];
+		}
+
 		Elements message;
 
-		Elements posts = currentSite.select("div#posts div[id^=edit]");
+		Elements posts = currentSite.select("table[id^=post]");
 		for(Element post : posts) {
 			final Post newPost = new Post();
 
-			date = post.select("table tbody tr td.thead.post-date").first().ownText();
-            //date = date.substring(0, date.indexOf("#"));
-			orderNr = "#" + post.select("table tbody tr td.thead.post-date span a").text();
-            postUrl = post.select("table tbody tr td.thead.post-date span a").attr("abs:href");
-			author = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
-			membertype = post.select("table tbody tr[style^=vertical] td.alt2.post-left table").text();
-			online = post.select("table tbody tr[style^=vertical] td.alt2.post-left table tbody tr td div").attr("title");
-			userProfileUrl = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[class^=smallfont] a").attr("abs:href");
-			avatarurl = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[class^=smallfont] a img").attr("src");
-			regdate = post.select("table tbody tr[style^=vertical] td.alt2.post-left div[class=smallfont] div:contains(Reg)").text();
-			numposts = post.select("table tbody tr[style^=vertical] td.alt2.post-left div.post-user div.post-user-info.smallfont div:nth-child(2)").text();
+			date = post.select("tbody tr td.thead.post-date").first().ownText();
+			orderNr = "#" + post.select("tbody tr td.thead.post-date span a").text();
+            postUrl = post.select("tbody tr td.thead.post-date span a").attr("abs:href");
+			author = post.select("tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
+			membertype = post.select("table.post-user-title").text();
+			online = post.select("div[class^=icon-user]").attr("title");
+			userProfileUrl = post.select("a.bigusername").attr("abs:href");
+			avatarurl = post.select("a.post-user-avatar img").attr("src");
+			regdate = post.select("div.post-user-info.smallfont div:contains(Reg)").text();
+			numposts = post.select("tbody tr[style^=vertical] td.alt2.post-left div.post-user div.post-user-info.smallfont div:nth-child(2)").text();
 			newPost.setDate(date);
 			newPost.setOrderNr(orderNr);
 			newPost.setAuthor(author);
@@ -508,8 +512,8 @@ public class Parser {
 			newPost.setRegdate(regdate);
 			newPost.setNumposts(numposts);
             newPost.setPostUrl(postUrl);
-
-			message = post.select("table tbody tr[style^=vertical] td.alt1.post-right div[id^=post_message]");
+			newPost.setThreadId(threadId);
+			message = post.select("div.post_message");
 
             // Links in posts.
             // div#posts div[id^=edit] td.alt1.post-right div.post_message a
@@ -594,7 +598,7 @@ public class Parser {
             int quotesize = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").size();
 
             for(int i = 0; i < quotesize; i++) {
-                //System.out.println(message);
+                //message);
                 String quotetext;
 
                 /* Radbrytningar i citat */
@@ -660,7 +664,7 @@ public class Parser {
 
             // Surround name of the quotee [newline]
             message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong").before("{quoter_name}").after("{/quoter_name}");
-            //System.out.println(message);
+            //message);
 
 
 			String site = message.toString();
@@ -685,7 +689,6 @@ public class Parser {
 			//site = site.replace("[newline]", "\n");
 
 			doc = Jsoup.parseBodyFragment(site);
-            System.out.println();
 			// Temporarily remove code- and php-tags
 			//doc.select("codetag").remove();
 			//doc.select("phptag").remove();
@@ -847,7 +850,6 @@ public class Parser {
 
             postArrayList.add(newPost);
 		}
-        if(postArrayList.isEmpty()) throw new IllegalStateException("Failed to parse posts. List is empty.");
 
         return postArrayList;
 	}
@@ -1028,10 +1030,57 @@ public class Parser {
      * Retrieves all of the received private messages from one page
      * @param url
      */
-    public void getPrivateMessages(String url) {
-        // Get categories
-        // form[method=post] table.tborder.p2-4 tbody[id]
+    public boolean getPrivateMessages(String url, Callback progressUpdate) {
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		} catch (IOException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		}
 
+        // Get categories
+        Elements categories = currentSite.select("form[method=post] table.tborder.p2-4 tbody:not(:last-child):nth-child(2n)");
+        Elements categorycontent = currentSite.select("form[method=post] table.tborder.p2-4 tbody:not(:last-child):nth-child(2n+1)");
+
+		for(int i = 0; i < categories.size(); i++) {
+			String categoryName = categories.get(i).select("div.smallfont > strong").text();
+			String categoryInfo = categories.get(i).select("div.smallfont > span").text();
+			HashMap<String, String> category = new HashMap<String, String>();
+			category.put("ItemType", "Divider");
+			category.put("CategoryName", categoryName);
+			category.put("CategoryInfo", categoryInfo);
+
+			progressUpdate.onTaskComplete(category);
+
+			Elements messages = categorycontent.get(i).select("tr");
+			for(int j = 0; j < messages.size(); j++) {
+				String icon = messages.get(j).select("td:first-child div").attr("class");
+				String messageDate = messages.get(j).select("td:nth-child(2) div:first-child span").text();
+				String messageTime = messages.get(j).select("td:nth-child(2) div:nth-child(2) span").text();
+				String messageHeadline = messages.get(j).select("td:nth-child(2) div:first-child a").text();
+				String messageFrom = messages.get(j).select("td:nth-child(2) div:nth-child(2) a").text();
+				String messageLink = messages.get(j).select("td:nth-child(2) div:first-child a").attr("abs:href");
+
+
+				HashMap<String, String> message = new HashMap<String, String>();
+				message.put("ItemType", "Message");
+				message.put("Date", messageDate);
+				message.put("Time", messageTime);
+				message.put("Headline", messageHeadline);
+				message.put("From", messageFrom);
+				message.put("Link", messageLink);
+				message.put("Icon", icon);
+				progressUpdate.onTaskComplete(message);
+			}
+
+		}
+
+		return true;
     }
 
     public int myPostsPages(String url) {
@@ -1080,8 +1129,8 @@ public class Parser {
 			name = e.select("td.alt1.td_title a[id^=thread_title]").text();
 			link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
 			author = e.select("div.smallfont.thread-poster span").text();
-			views = e.select("td.alt2.td_views").text();
-			numReplies = e.select("td.alt1.td_replies a").text();
+			views = e.select("td:nth-child(4)").text();
+			numReplies = e.select("td:nth-child(5)").text();
 			pages = e.select("td.alt1.td_title a.thread-pagenav-lastpage").text();
 			lastPost = e.select("td.alt2.td_last_post").text();
 
@@ -1225,5 +1274,82 @@ public class Parser {
         }
         return true;
     }
+
+	public int getSubscriptionPages(String url) {
+		int numPages = 1;
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return numPages;
+		} catch (IOException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return numPages;
+		}
+
+		String temp = currentSite.select("table div.pagenav.nborder.fr table tbody tr td.vbmenu_control.smallfont2.delim").text();
+
+		if(temp.isEmpty()) {
+			return 1;
+		}
+		String[] tempArray = temp.split(" ");
+		String pages = "";
+		try {
+			pages = tempArray[3];
+		} catch (IndexOutOfBoundsException e) {
+			e.printStackTrace();
+			return numPages;
+		}
+
+		try {
+			numPages = Integer.parseInt(pages);
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+			return numPages;
+		}
+
+		return numPages;
+	}
+
+	public boolean getMySubscribedThreads(String url, Callback progressupdate) {
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		} catch (IOException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return false;
+		}
+
+		Elements threads = currentSite.select("table#threadslist tbody tr:has(td.alt1.td_status)");
+
+		for(Element thread : threads) {
+			String startuser = thread.select("div.smallfont.thread-poster").text();
+			String threadTitle = thread.select("td.alt1.td_title div a[id^=thread_title]").text();
+			String threadLink = thread.select("td.alt1.td_title div a[id^=thread_title]").attr("abs:href");
+			String lastPost = thread.select("td.alt2.td_last_post").text();
+
+			String monitoring = thread.select("td.alt1.smallfont.alignc").text();
+
+			HashMap<String, String> threadMap = new HashMap<String, String>();
+			threadMap.put("User", startuser);
+			threadMap.put("Title", threadTitle);
+			threadMap.put("Link", threadLink);
+			threadMap.put("LastPost", lastPost);
+			threadMap.put("Monitoring", monitoring);
+			progressupdate.onTaskComplete(threadMap);
+		}
+
+		return true;
+	}
+
+	public ArrayList<Post> getPrivateMessageContent(String url) {
+		return getThreadContent(url);
+	}
 
 }

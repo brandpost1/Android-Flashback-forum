@@ -34,12 +34,12 @@ import com.dev.flashback_v04.fragments.MainPager;
 import com.dev.flashback_v04.fragments.SecondaryPager;
 import com.dev.flashback_v04.fragments.special.CreateThreadFragment;
 import com.dev.flashback_v04.fragments.special.CurrentThreadsFragment;
-import com.dev.flashback_v04.fragments.special.MyPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewThreadsFragment;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
-import com.dev.flashback_v04.fragments.special.PrivateMessagingFragment;
+import com.dev.flashback_v04.fragments.special.PrivateMessagingPager;
 import com.dev.flashback_v04.fragments.special.SearchFragment;
+import com.dev.flashback_v04.fragments.special.ViewPMFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 import com.dev.flashback_v04.interfaces.UpdateForum;
 import com.dev.flashback_v04.interfaces.UpdateStuff;
@@ -56,11 +56,16 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
 	public FragmentManager fragmentManager;
 
+	private static final int CONFIG_CAT_FORUMS = 0;
+	private static final int CONFIG_FORUMS_THREADS = 1;
+	private static final int CONFIG_THREADS_POSTS = 2;
+	private static int CURRENT_APP_CONFIG;
+
     /*
     Banner ads
     * */
     AdView adView;
-    final boolean ADS_ACTIVATED = false;
+    boolean ADS_ACTIVATED;
 
 	/*
 	Navigation drawer
@@ -68,7 +73,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	private DrawerLayout mDrawerLayout;
 	private ListView mDrawerList;
 	private ActionBarDrawerToggle mDrawerToggle;
-	private String[] mDrawerItems;
     DrawerAdapter mAdapter;
 
     private Activity activity;
@@ -84,22 +88,58 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         Toast.makeText(this, "Report post", Toast.LENGTH_SHORT).show();
     }
 
-    public void normalquote(View v) {
-        Toast.makeText(this, (String)v.getTag(R.id.QUOTE_MESSAGE_TAG) + ", " + (String)v.getTag(R.id.QUOTE_AUTHOR_TAG), Toast.LENGTH_SHORT).show();
-    }
-
-    public void plusquote(View v) {
-        Toast.makeText(this, "Plusquote", Toast.LENGTH_SHORT).show();
-    }
-
-    public void openThreadLastPage(MenuItem item) {
-
-        Toast.makeText(this, "Open last page", Toast.LENGTH_SHORT).show();
-    }
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		return super.onCreateOptionsMenu(menu);
+	}
+
+	public void openPrivateMessage(String url) {
+		ViewPMFragment fragment = new ViewPMFragment();
+		Bundle args = new Bundle();
+		args.putString("Link", url);
+		fragment.setArguments(args);
+		try {
+			fragmentManager.beginTransaction()
+					.addToBackStack("Message")
+					.replace(R.id.fragmentcontainer, fragment)
+					.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void searchThread(String query) {
+		Fragment fragment = new SecondaryPager();
+		Bundle args = new Bundle();
+		args.putInt("FragmentType", 2);
+		args.putString("SearchQuery", query);
+		fragment.setArguments(args);
+
+		try {
+			fragmentManager.beginTransaction()
+					.addToBackStack("ThreadSearch")
+					.replace(R.id.fragmentcontainer, fragment)
+					.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void searchForum(String query) {
+		Fragment fragment = new SecondaryPager();
+		Bundle args = new Bundle();
+		args.putInt("FragmentType", 1);
+		args.putString("SearchQuery", query);
+		fragment.setArguments(args);
+
+		try {
+			fragmentManager.beginTransaction()
+					.addToBackStack("ThreadSearch")
+					.replace(R.id.fragmentcontainer, fragment)
+					.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/*
@@ -142,7 +182,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		/*
 		* Replace the old fragment
 		* */
-System.out.println("Second: " + (MainActivity)this);
+
  		try {
 			fragmentManager.beginTransaction()
 					.addToBackStack("Forums")
@@ -251,7 +291,13 @@ System.out.println("Second: " + (MainActivity)this);
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
-        System.out.println("Oncreate: " + (MainActivity)this);
+
+		if(Constants.type == Constants.Type.FREE) {
+			ADS_ACTIVATED = true;
+		} else {
+			ADS_ACTIVATED = false;
+		}
+
         // Set default preferences
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
 
@@ -295,11 +341,6 @@ System.out.println("Second: " + (MainActivity)this);
 		fragmentManager  = getSupportFragmentManager();
 
 		/*
-		* Temporary array for the drawer-list
-		* */
-		mDrawerItems = getResources().getStringArray(R.array.drawer);
-
-		/*
 		* Set up the navigation-drawer
 		* */
 
@@ -314,6 +355,7 @@ System.out.println("Second: " + (MainActivity)this);
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 int i = (int)adapterView.getItemIdAtPosition(position);
                 int backstackcount;
+				String userID;
                 switch(i) {
                     case 0:
                         // Go back to start
@@ -372,7 +414,6 @@ System.out.println("Second: " + (MainActivity)this);
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 3:
-
                         NewPostsFragment newPostsFragment = new NewPostsFragment();
                         backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
@@ -397,7 +438,7 @@ System.out.println("Second: " + (MainActivity)this);
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 4:
-                        Toast.makeText(getBaseContext(), "Sök ska vara här", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getBaseContext(), "Sök finns för tillfället bara inuti forum samt inuti trådar. Avancerad sökning kommer eventuellt senare.", Toast.LENGTH_LONG).show();
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
 
                         SearchFragment searchFragment = new SearchFragment();
@@ -414,8 +455,10 @@ System.out.println("Second: " + (MainActivity)this);
                         break;
                     case 5:
 						SecondaryPager myPostsPager = new SecondaryPager();
+						userID = Integer.toString(SharedPrefs.getPreference(activity, "user", "ID"));
 						Bundle myPostsBundle = new Bundle();
 						myPostsBundle.putInt("FragmentType", 2);
+						myPostsBundle.putString("UserId", userID);
 						myPostsPager.setArguments(myPostsBundle);
 						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
@@ -441,8 +484,10 @@ System.out.println("Second: " + (MainActivity)this);
                         break;
                     case 6:
                         SecondaryPager myThreadsPager = new SecondaryPager();
+						userID = Integer.toString(SharedPrefs.getPreference(activity, "user", "ID"));
                         Bundle myThreadsBundle = new Bundle();
                         myThreadsBundle.putInt("FragmentType", 1);
+						myThreadsBundle.putString("UserId", userID);
                         myThreadsPager.setArguments(myThreadsBundle);
 						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
@@ -493,12 +538,12 @@ System.out.println("Second: " + (MainActivity)this);
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 8:
-                        PrivateMessagingFragment mPrivateMessagingFragment = new PrivateMessagingFragment();
+                        PrivateMessagingPager mPrivateMessagingPager = new PrivateMessagingPager();
 
 						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
 
 						// Same as above
-						/*try {
+						try {
 							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MyMessages")
 									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MyMessages")) {
 								getSupportFragmentManager().popBackStack("MyMessages", FragmentManager.POP_BACK_STACK_INCLUSIVE);
@@ -509,11 +554,11 @@ System.out.println("Second: " + (MainActivity)this);
                         try {
                             fragmentManager.beginTransaction()
                                     .addToBackStack("MyMessages")
-                                    .replace(R.id.fragmentcontainer, mPrivateMessagingFragment)
+                                    .replace(R.id.fragmentcontainer, mPrivateMessagingPager)
                                     .commit();
                         } catch (Exception e) {
                             e.printStackTrace();
-                        }*/
+                        }
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 9:
@@ -538,6 +583,33 @@ System.out.println("Second: " + (MainActivity)this);
                             refreshDrawer();
                         }
                         break;
+					case 11:
+						SecondaryPager mySubscriptionsPager = new SecondaryPager();
+						Bundle mySubsBundle = new Bundle();
+						mySubsBundle.putInt("FragmentType", 3);
+						mySubscriptionsPager.setArguments(mySubsBundle);
+
+						backstackcount = getSupportFragmentManager().getBackStackEntryCount();
+
+						// Same as above
+						try {
+							if(getSupportFragmentManager().getBackStackEntryAt(backstackcount-1).getName().equals("MySubscriptions")
+									|| getSupportFragmentManager().getBackStackEntryAt(backstackcount-2).getName().equals("MySubscriptions")) {
+								getSupportFragmentManager().popBackStack("MySubscriptions", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+							}
+						} catch (Exception e) {
+
+						}
+						try {
+							fragmentManager.beginTransaction()
+									.addToBackStack("MySubscriptions")
+									.replace(R.id.fragmentcontainer, mySubscriptionsPager)
+									.commit();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						mDrawerLayout.closeDrawer(Gravity.LEFT);
+						break;
                 }
             }
         });
@@ -578,13 +650,14 @@ System.out.println("Second: " + (MainActivity)this);
 
 			fragmentManager
 					.beginTransaction()
-                    .addToBackStack("Start")
-					.add(R.id.fragmentcontainer, fragment)
+					.addToBackStack("Start")
+					.replace(R.id.fragmentcontainer, fragment)
 					.commit();
 		}
+
 	}
 
-    @Override
+	@Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Pass the event to ActionBarDrawerToggle, if it returns
         // true, then it has handled the app icon touch event

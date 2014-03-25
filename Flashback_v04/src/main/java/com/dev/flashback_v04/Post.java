@@ -1,5 +1,15 @@
 package com.dev.flashback_v04;
 
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v7.widget.PopupMenu;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+
+import com.dev.flashback_v04.activities.MainActivity;
+import com.dev.flashback_v04.fragments.SecondaryPager;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -11,6 +21,8 @@ public class Post {
 
 	ArrayList<String[]> postRows;
 	String author;
+	String userID;
+	String threadID;
 	String numposts;
 	String membertype;
 	String orderNr;
@@ -21,7 +33,8 @@ public class Post {
 	String regdate;
 
 
-
+	PopupMenu mPopup;
+	boolean popupInit = false;
     String postUrl;
 
 	public Post() {
@@ -53,6 +66,83 @@ public class Post {
         return quote;
     }
 
+	public void initPopup(final Context context, View anchor) {
+		//TODO: Place this somewhere else.. I don't want this here.
+		popupInit = true;
+		mPopup = new PopupMenu(context, anchor);
+		PopupMenu.OnMenuItemClickListener clickListener = new PopupMenu.OnMenuItemClickListener() {
+			@Override
+			public boolean onMenuItemClick(MenuItem menuItem) {
+				int item = menuItem.getItemId();
+				Bundle bundle;
+				switch (item) {
+					case 1:
+
+						break;
+					case 2:
+						SecondaryPager userThreadsPager = new SecondaryPager();
+						userID = userProfileUrl.split("/u")[1];
+						bundle = new Bundle();
+						bundle.putInt("FragmentType", 1);
+						bundle.putString("UserId", userID);
+						userThreadsPager.setArguments(bundle);
+						try {
+							((MainActivity)context).getSupportFragmentManager().beginTransaction()
+									.addToBackStack("UserThreads")
+									.replace(R.id.fragmentcontainer, userThreadsPager)
+									.commit();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+					case 3:
+						SecondaryPager userPostsPager = new SecondaryPager();
+						userID = userProfileUrl.split("/u")[1];
+						bundle = new Bundle();
+						bundle.putInt("FragmentType", 2);
+						bundle.putString("UserId", userID);
+						userPostsPager.setArguments(bundle);
+						try {
+							((MainActivity)context).getSupportFragmentManager().beginTransaction()
+									.addToBackStack("UserPosts")
+									.replace(R.id.fragmentcontainer, userPostsPager)
+									.commit();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+					case 4:
+						SecondaryPager userThreadPosts = new SecondaryPager();
+						userID = userProfileUrl.split("/u")[1];
+						bundle = new Bundle();
+						bundle.putInt("FragmentType", 2);
+						bundle.putString("UserId", userID);
+						bundle.putString("ThreadId", threadID);
+						userThreadPosts.setArguments(bundle);
+						try {
+							((MainActivity)context).getSupportFragmentManager().beginTransaction()
+									.addToBackStack("UserThreadPosts")
+									.replace(R.id.fragmentcontainer, userThreadPosts)
+									.commit();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+				}
+				return false;
+			}
+		};
+
+		mPopup.setOnMenuItemClickListener(clickListener);
+		mPopup.getMenu().add(Menu.NONE, 1, Menu.NONE, "Skicka PM").setEnabled(false);
+		mPopup.getMenu().add(Menu.NONE, 2, Menu.NONE, "Hitta alla ämnen");
+		mPopup.getMenu().add(Menu.NONE, 3, Menu.NONE, "Hitta alla inlägg");
+		mPopup.getMenu().add(Menu.NONE, 4, Menu.NONE, "Hitta alla inlägg i detta ämne");
+
+	}
+	public void showPopup() {
+		mPopup.show();
+	}
     public void setPostUrl(String postUrl) {
         this.postUrl = postUrl;
     }
@@ -63,6 +153,9 @@ public class Post {
 		return postRows;
 	}
 
+	public String getAvatarUrl() {
+		return avatarurl;
+	}
 	public String getAuthor() {
 		return author;
 	}
@@ -125,5 +218,9 @@ public class Post {
 
 	public void setRegdate(String regdate) {
 		this.regdate = regdate;
+	}
+
+	public void setThreadId(String threadId) {
+		threadID = threadId;
 	}
 }

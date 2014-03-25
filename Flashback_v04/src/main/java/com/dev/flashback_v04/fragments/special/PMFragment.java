@@ -4,19 +4,21 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.adapters.special.MyQuotesAdapter;
+import com.dev.flashback_v04.adapters.special.PrivateMessagesAdapter;
 import com.dev.flashback_v04.interfaces.Callback;
 
 import java.util.ArrayList;
@@ -25,16 +27,16 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2014-03-09.
  */
-public class MyQuotesFragment extends ListFragment {
+public class PMFragment extends ListFragment {
 
-    public class GetQuotesTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+    public class GetPMTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
         Callback mProgressUpdate;
         Callback mCallback;
         Parser mParser;
         Context mContext;
 
-        public GetQuotesTask(Context context, Callback callback) {
+        public GetPMTask(Context context, Callback callback) {
             mCallback = callback;
             mContext = context;
             mParser = new Parser(mContext);
@@ -49,7 +51,7 @@ public class MyQuotesFragment extends ListFragment {
 
         @Override
         protected Boolean doInBackground(String... strings) {
-            mParser.getMyQuotes(strings[0], mProgressUpdate);
+            mParser.getPrivateMessages(strings[0], mProgressUpdate);
             return null;
         }
 
@@ -61,14 +63,15 @@ public class MyQuotesFragment extends ListFragment {
     }
 
     private Activity mActivity;
-    private MyQuotesAdapter myQuotesAdapter;
-    private GetQuotesTask mGetQuotesTask;
-    private Callback quoteFetched;
-    private String mUserName;
+    private PrivateMessagesAdapter privateMessagesAdapter;
+    private GetPMTask mGetPMsTask;
+    private Callback messageFetched;
+	private Button mLoadButton;
+
     private int pageNumber;
     private int numPages;
+	private int fragmentType;
 
-    View.OnClickListener openForumListener;
 
     @Override
     public void onAttach(Activity activity) {
@@ -79,53 +82,44 @@ public class MyQuotesFragment extends ListFragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putSerializable("AdapterValues", myQuotesAdapter.getItems());
+        outState.putSerializable("AdapterValues", privateMessagesAdapter.getItems());
         outState.putInt("PageNumber", pageNumber);
         outState.putInt("NumPages", numPages);
+		outState.putInt("FragmentType", fragmentType);
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-        openForumListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String forumUrl = (String)view.getTag(R.id.OPEN_FORUM);
-                String forumName = (String)view.getTag(R.id.OPEN_FORUM_NAME);
-                ((MainActivity)mActivity).openForum(forumUrl, forumName);
-            }
-        };
-
-        myQuotesAdapter = new MyQuotesAdapter(mActivity, openForumListener);
+		setHasOptionsMenu(true);
+		privateMessagesAdapter = new PrivateMessagesAdapter(mActivity);
 
         if(savedInstanceState != null) {
-            // Restore adapter
-            ArrayList<HashMap<String, String>> savedValues = (ArrayList<HashMap<String, String>>) savedInstanceState.get("AdapterValues");
-            myQuotesAdapter.setItems(savedValues);
-            myQuotesAdapter.notifyDataSetChanged();
+			// Restore adapter
+			ArrayList<HashMap<String, String>> savedValues = (ArrayList<HashMap<String, String>>) savedInstanceState.get("AdapterValues");
+			privateMessagesAdapter.setItems(savedValues);
+			privateMessagesAdapter.notifyDataSetChanged();
+		}
 
-        }
-        setListAdapter(myQuotesAdapter);
-        quoteFetched = new Callback<HashMap<String, String>>() {
-            @Override
-            public void onTaskComplete(HashMap<String, String> data) {
-                myQuotesAdapter.addItem(data);
-                myQuotesAdapter.notifyDataSetChanged();
-            }
-        };
-
-		// Get username from preferences
-		mUserName = PreferenceManager.getDefaultSharedPreferences(mActivity).getString("UserName", "");
+        setListAdapter(privateMessagesAdapter);
+		messageFetched = new Callback<HashMap<String, String>>() {
+			@Override
+			public void onTaskComplete(HashMap<String, String> data) {
+				privateMessagesAdapter.addItem(data);
+				privateMessagesAdapter.notifyDataSetChanged();
+			}
+		};
 
 		if(savedInstanceState == null) {
 			pageNumber = getArguments().getInt("PageNumber");
 			numPages = getArguments().getInt("NumPages");
-			mGetQuotesTask = new GetQuotesTask(mActivity, quoteFetched);
-			mGetQuotesTask.execute("https://www.flashback.org/sok/quote="+ mUserName +"+?sp=1&so=d&page=" + pageNumber);
+			fragmentType = getArguments().getInt("FragmentType");
+			loadPmList();
 		} else {
 			pageNumber = savedInstanceState.getInt("PageNumber");
 			numPages = savedInstanceState.getInt("NumPages");
 		}
+
     }
 
     @Override
@@ -133,24 +127,58 @@ public class MyQuotesFragment extends ListFragment {
         View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
         TextView header;
         TextView headerRight;
-        String numPagesText;
-
-        numPagesText = "Sida " + pageNumber + " av " + numPages;
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerRight = (TextView)view.findViewById(R.id.headerright);
-        header.setText("Mina citerade inlägg");
-        headerRight.setText(numPagesText);
+        header.setVisibility(View.GONE);
+        headerRight.setVisibility(View.GONE);
         return view;
     }
 
-    @Override
+	@Override
+	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		super.onCreateOptionsMenu(menu, inflater);
+		menu.clear();
+		inflater.inflate(R.menu.messaging_menu, menu);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		int itemId = item.getItemId();
+		switch (itemId) {
+			case R.id.refresh_private_messages:
+				clearPmList();
+				loadPmList();
+				break;
+			case R.id.new_private_message:
+
+				break;
+		}
+ 		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         super.onListItemClick(l, v, position, id);
-		String threadUrl = (String)v.getTag(R.id.OPEN_THREAD);
-		String threadName = (String)v.getTag(R.id.OPEN_THREAD_NAME);
+		String url = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("Link");
+		// Get PMId from url
+		String pmId;
+		try {
+			pmId = url.substring(url.indexOf("pmid="), url.indexOf("&", url.indexOf("pmid="))).split("=")[1];
+		} catch (Exception e) {
 
-		// -1 because the page is unknown from this type of url
-		((MainActivity)mActivity).openThread(threadUrl, -1, threadName);
+		}
+
+		((MainActivity)mActivity).openPrivateMessage(url);
     }
+
+	private void clearPmList() {
+		privateMessagesAdapter.clearListData();
+		privateMessagesAdapter.notifyDataSetChanged();
+	}
+
+	private void loadPmList() {
+		mGetPMsTask = new GetPMTask(mActivity, messageFetched);
+		mGetPMsTask.execute("https://www.flashback.org/private.php?pp=100&folderid=" + fragmentType + "&page=" + pageNumber);
+	}
 }

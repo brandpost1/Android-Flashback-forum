@@ -26,7 +26,7 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2014-03-09.
  */
-public class MyThreadsFragment extends ListFragment {
+public class UserThreadsFragment extends ListFragment {
 
     public class GetMyThreadsTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
@@ -67,6 +67,7 @@ public class MyThreadsFragment extends ListFragment {
 
     private int pageNumber;
     private int numPages;
+	private String userId;
 
     @Override
     public void onAttach(Activity activity) {
@@ -103,6 +104,25 @@ public class MyThreadsFragment extends ListFragment {
                 myThreadsAdapter.notifyDataSetChanged();
             }
         };
+
+		if(savedInstanceState == null) {
+			String executeString = "";
+			userId = getArguments().getString("UserId");
+			pageNumber = getArguments().getInt("PageNumber");
+			numPages = getArguments().getInt("NumPages");
+
+			if(getArguments().getString("Search") != null) {
+				executeString = getArguments().getString("Search");
+			} else {
+				executeString = "https://www.flashback.org/find_threads_by_user.php?userid="+ userId +"&sortorder=DESC&sortby=lastpost&page=" + pageNumber;
+			}
+
+			getMyThreadsTask = new GetMyThreadsTask(mActivity, threadFetched);
+			getMyThreadsTask.execute(executeString);
+		} else {
+			pageNumber = savedInstanceState.getInt("PageNumber");
+			numPages = savedInstanceState.getInt("NumPages");
+		}
     }
 
     @Override
@@ -112,23 +132,21 @@ public class MyThreadsFragment extends ListFragment {
         TextView headerRight;
         String numPagesText;
 
-        if(savedInstanceState == null) {
-            String userId = Integer.toString(SharedPrefs.getPreference(mActivity, "user", "ID"));
-
-            pageNumber = getArguments().getInt("PageNumber");
-            numPages = getArguments().getInt("NumPages");
-            getMyThreadsTask = new GetMyThreadsTask(mActivity, threadFetched);
-            getMyThreadsTask.execute("https://www.flashback.org/find_threads_by_user.php?userid="+ userId +"&sortorder=DESC&sortby=lastpost&page=" + pageNumber);
-        } else {
-            pageNumber = savedInstanceState.getInt("PageNumber");
-            numPages = savedInstanceState.getInt("NumPages");
-        }
-
         numPagesText = "Sida " + pageNumber + " av " + numPages;
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerRight = (TextView)view.findViewById(R.id.headerright);
-        header.setText("Mina startade ämnen");
+
+		if(userId != null) {
+			if(userId.equals(Integer.toString(SharedPrefs.getPreference(mActivity, "user", "ID")))) {
+				header.setText("Mina startade ämnen");
+			} else {
+				header.setText("Startade ämnen");
+			}
+		} else {
+			header.setText("Sökresultat");
+		}
+
         headerRight.setText(numPagesText);
         return view;
     }

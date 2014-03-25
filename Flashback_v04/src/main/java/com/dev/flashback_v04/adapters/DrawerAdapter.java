@@ -76,7 +76,8 @@ public class DrawerAdapter extends BaseAdapter {
             mList.add(new DrawerItem("Item", "Mina inlägg", "", 5));
             mList.add(new DrawerItem("Item", "Mina Ämnen", "", 6));
             mList.add(new DrawerItem("Item", "Citerade inlägg", "", 7));
-            mList.add(new DrawerItem("Item", "(PM)", "", 8));
+            mList.add(new DrawerItem("Item", "Prenumerationer", "", 11));
+            mList.add(new DrawerItem("Item", "PM", "", 8));
             mList.add(new DrawerItem("Divider", "APP"));
             mList.add(new DrawerItem("Item", "Inställningar", "", 9));
             mList.add(new DrawerItem("Item", "Logga ut", "", 10));

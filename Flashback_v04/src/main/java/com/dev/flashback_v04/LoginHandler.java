@@ -91,12 +91,13 @@ public class LoginHandler {
 
         // Some headers
         connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+        connection.setRequestProperty("Referer", "https://www.flashback.org/");
         connection.setRequestProperty("Cookie", cookiestring);
 
         // Make request
         InputStream response;
         try {
-            response = connection.getInputStream();
+			response = connection.getInputStream();
         } catch (IOException e) {
             throw new IOException("Failed to get Inputstream");
         }
@@ -262,6 +263,14 @@ public class LoginHandler {
 
 	}
 
+	public static boolean sendPrivateMessage(String toUser, String message, String pmId, Context context) {
+		if(loggedIn(context)) {
+			HttpClient client = new DefaultHttpClient();
+			HttpPost post = new HttpPost("https://www.flashback.org/private.php");
+
+		}
+		return true;
+	}
 
     /**
      * @param url
@@ -442,7 +451,6 @@ public class LoginHandler {
             if(responseCode == HttpURLConnection.HTTP_MOVED_PERM) {
                 // Probably successful
                 String newLocation = connection.getHeaderField("Location");
-                System.out.println(newLocation);
                 // Use newLocation to open the new thread
                 callback.setRedirect(newLocation);
                 return true;
@@ -450,6 +458,7 @@ public class LoginHandler {
 
             InputStream response = connection.getInputStream();
 
+			/*
             if(response != null) {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(response));
                 try {
@@ -460,6 +469,7 @@ public class LoginHandler {
                     try { reader.close(); } catch (IOException logOrIgnore) {}
                 }
             }
+            */
 
 
             return false;

@@ -13,6 +13,8 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.PopupMenu;
+import android.support.v7.widget.SearchView;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -24,6 +26,7 @@ import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.NumberPicker;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -83,6 +86,25 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
             shareIntent.putExtra(Intent.EXTRA_TEXT, thread_url_withpagenr);
             mShare.setShareIntent(shareIntent);
         }
+
+		// Set up search
+		MenuItem searchItem = menu.findItem(R.id.thread_search);
+		SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
+		searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+			@Override
+			public boolean onQueryTextSubmit(String searchString) {
+				int threadId = getArguments().getInt("ThreadId");
+				String query = "https://www.flashback.org/sok/"+ searchString +"?sp=1&t=" + threadId;
+				query = query.replace(" ", "+");
+				((MainActivity)mActivity).searchThread(query);
+				return true;
+			}
+
+			@Override
+			public boolean onQueryTextChange(String s) {
+				return false;
+			}
+		});
 
         // If logged in, show new reply button in thread.
         try {
@@ -233,7 +255,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 	@Override
 	public void onListItemClick(ListView l, View v, int position, long id) {
 		super.onListItemClick(l, v, position, id);
-
 	}
 
 	@Override

@@ -67,13 +67,13 @@ public class ShowForumsAdapter extends BaseAdapter {
             SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
             boolean darkTheme = appPrefs.getBoolean("theme_preference", false);
 
-            if(darkTheme) {
+           /* if(darkTheme) {
                 forumTitle.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
                 forumInfo.setTextAppearance(mContext, android.R.style.TextAppearance_Small);
             } else {
                 forumTitle.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
                 forumInfo.setTextAppearance(mContext, android.R.style.TextAppearance_Small);
-            }
+            }*/
         // End of hackish
 
         return view;

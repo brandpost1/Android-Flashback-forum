@@ -45,8 +45,12 @@ public class CreateThreadFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        forumName = getArguments().getString("ForumName", "DefaultForumName");
-        forumID = getArguments().getString("ForumId", "-1");
+        forumName = getArguments().getString("ForumName");
+		if(forumName == null)
+			forumName = "DefaultForumName";
+        forumID = getArguments().getString("ForumId");
+		if(forumID == null)
+			forumID = "-1";
         forumLink = getArguments().getString("ForumUrl");
     }
 

@@ -9,10 +9,12 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 
+import android.support.v7.widget.PopupMenu;
 import android.text.InputType;
 import android.text.Spannable;
 
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -28,6 +30,7 @@ import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.asynctasks.PostsParserTask;
 import com.dev.flashback_v04.interfaces.OnTaskComplete;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,11 +40,6 @@ import java.util.HashMap;
  * Created by Viktor on 2013-06-18.
  */
 public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
-
-	static final int HEADER_ROW = 0;
-	static final int MESSAGE_ROW = 1;
-	static final int QUOTE_ROW = 2;
-	static final int DIVIDER_ROW = 3;
 
     static final int POST_HEADER = 0;
     static final int POST_MESSAGE = 1;
@@ -56,9 +54,6 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
     static final int POST_CODE_FOOTER = 10;
     static final int POST_QUOTE_ANONHEADER = 11;
 
-
-    static String currentPost = "";
-
 	private Context mContext;
 	private PostsParserTask mPostsParserTask;
 	private LayoutInflater mInflater;
@@ -68,11 +63,11 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
     boolean[] checked = new boolean[10000];
     boolean[] showSpoiler = new boolean[10000];
 
+	// User-click menu
+	ArrayList<PopupMenu> mUserPopups;
+
 	int headers = -1;
-    static int count = 0;
 	ArrayList<String[]> rows;
-    ArrayList<String> quoteText;
-	ArrayList<Integer> headersAt;
     PostsFragCallback<Bundle> mCallback;
 
     public static HashMap<String, String[]> mPlusQuotes = new HashMap<String, String[]>();
@@ -81,15 +76,10 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		url = thread_url;
 		mContext = context;
-
         mCallback = callback;
-
-
-		headersAt = new ArrayList<Integer>();
+		mUserPopups = new ArrayList<PopupMenu>();
 		rows = new ArrayList<String[]>();
-        quoteText = new ArrayList<String>();
 		mPostArrayList = new ArrayList<Post>();
-
 		mPostsParserTask = new PostsParserTask(this, context);
 		mPostsParserTask.execute(url);
 	}
@@ -154,7 +144,6 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 
 	@Override
 	public boolean isEnabled(int position) {
-
 		return false;
 	}
 
@@ -183,6 +172,8 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         ImageView reportPost = null;
         // Code
         TextView code = null;
+
+
 
         int type = getItemViewType(position);
 
@@ -237,6 +228,26 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 regdate = (TextView)view.findViewById(R.id.user_reg_date);
                 avatar = (ImageView)view.findViewById(R.id.user_avatar);
                 sharePost = (ImageView)view.findViewById(R.id.share_post);
+				String avatarUrl = mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getAvatarUrl();
+
+				if(avatarUrl.isEmpty()) {
+					Picasso.with(mContext)
+							.load(R.drawable.ic_contact_picture)
+							.error(R.drawable.ic_contact_picture)
+							.resize(90, 90)
+							.centerCrop()
+							.placeholder(R.drawable.ic_contact_picture)
+							.into(avatar);
+				} else {
+					Picasso.with(mContext)
+							.load(avatarUrl)
+							.error(R.drawable.ic_contact_picture)
+							.resize(90, 90)
+							.centerCrop()
+							.placeholder(R.drawable.ic_contact_picture)
+							.into(avatar);
+				}
+
 
                 // Should the "Share"-button show?
                 SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
@@ -255,6 +266,16 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     }
                 });
 
+				//TODO: Remake this whole popup-menu business.. Very ugly now. In fact, remake pretty much all of this class and the "Post"-class.
+				avatar.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).showPopup();
+					}
+				});
+
+				mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).initPopup(mContext, avatar);
+
                 // Don't remember..
                 if(rows.get(position)[2] != null) {
                     author.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getAuthor());
@@ -263,7 +284,6 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     date.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getDate());
                     posts.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getNumposts());
                     regdate.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getRegdate());
-
 
 
                     if(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getOnline().toLowerCase().equals("online")) {

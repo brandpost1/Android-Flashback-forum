@@ -6,6 +6,8 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.SearchView;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -154,6 +156,7 @@ public class ShowThreadsFragment extends ListFragment {
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         this.menu = menu;
         menu.clear();
+		inflater.inflate(R.menu.forum_default_menu, menu);
 
         try {
             if(LoginHandler.loggedIn(mActivity) && mAdapter.getThreads().size() > 0)
@@ -161,6 +164,26 @@ public class ShowThreadsFragment extends ListFragment {
         } catch(NullPointerException e) {
             e.printStackTrace();
         }
+
+		// Set up search
+		MenuItem searchItem = menu.findItem(R.id.thread_search);
+		SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
+		searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+			@Override
+			public boolean onQueryTextSubmit(String searchString) {
+				int forumId = Integer.parseInt(forum_id);
+				String query = "https://www.flashback.org/sok/"+ searchString +"?f=" + forumId;
+				query = query.replace(" ", "+");
+				((MainActivity)mActivity).searchForum(query);
+				return true;
+			}
+
+			@Override
+			public boolean onQueryTextChange(String s) {
+				return false;
+			}
+		});
+
 		super.onCreateOptionsMenu(menu, inflater);
 	}
 

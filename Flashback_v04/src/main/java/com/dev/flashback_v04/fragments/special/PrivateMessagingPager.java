@@ -1,11 +1,14 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager;
 
 import android.view.LayoutInflater;
@@ -22,13 +25,13 @@ import com.dev.flashback_v04.fragments.ShowCategoriesFragment;
 /**
  * Created by Viktor on 2014-01-21.
  */
-public class PrivateMessagingFragment extends Fragment {
+public class PrivateMessagingPager extends Fragment {
 
     private MainActivity mActivity;
     private PrivateMessagesPagingAdapter mPrivateMessagesPagingAdapter;
     private ViewPager mViewPager;
 
-    public PrivateMessagingFragment() {
+    public PrivateMessagingPager() {
 
     }
 
@@ -40,9 +43,8 @@ public class PrivateMessagingFragment extends Fragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        setHasOptionsMenu(true);
+		setHasOptionsMenu(true);
         mPrivateMessagesPagingAdapter = new PrivateMessagesPagingAdapter(getChildFragmentManager());
-
         super.onCreate(savedInstanceState);
     }
 
@@ -53,14 +55,9 @@ public class PrivateMessagingFragment extends Fragment {
 
         mViewPager = (ViewPager) v.findViewById(R.id.viewpager);
         mViewPager.setAdapter(mPrivateMessagesPagingAdapter);
-        mActivity.getSupportActionBar().setTitle("Meddelanden");
+        //mActivity.getSupportActionBar().setTitle("Meddelanden");
 
         return v;
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.messaging_menu, menu);
     }
 
     @Override
@@ -103,13 +100,23 @@ public class PrivateMessagingFragment extends Fragment {
         public Fragment getItem(int position) {
             switch (position) {
                 case 0:
+					Bundle inboxbundle = new Bundle();
+					inboxbundle.putInt("PageNumber", 1);
+					inboxbundle.putInt("NumPages", 1);
+					inboxbundle.putInt("FragmentType", 0);
                     // Inbox fragment
-                    ShowCategoriesFragment frag1 = new ShowCategoriesFragment();
-                    return frag1;
+                    PMFragment inbox = new PMFragment();
+					inbox.setArguments(inboxbundle);
+                    return inbox;
                 case 1:
+					Bundle outboxbundle = new Bundle();
+					outboxbundle.putInt("PageNumber", 1);
+					outboxbundle.putInt("NumPages", 1);
+					outboxbundle.putInt("FragmentType", -1);
                     // Outbox fragment
-                    ShowCategoriesFragment frag2 = new ShowCategoriesFragment();
-                return frag2;
+					PMFragment outbox = new PMFragment();
+					outbox.setArguments(outboxbundle);
+                return outbox;
             }
             return null;
         }

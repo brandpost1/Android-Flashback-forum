@@ -24,7 +24,7 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2014-03-09.
  */
-public class MyPostsFragment extends ListFragment {
+public class UserPostsFragment extends ListFragment {
 
 	public class GetMyPostsTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
@@ -67,6 +67,7 @@ public class MyPostsFragment extends ListFragment {
 
 	private int pageNumber;
 	private int numPages;
+	private String userId;
 
     @Override
     public void onAttach(Activity activity) {
@@ -112,6 +113,34 @@ public class MyPostsFragment extends ListFragment {
 			}
 		};
 
+		if(savedInstanceState == null) {
+			String executeString;
+			String threadId = getArguments().getString("ThreadId");
+			userId = getArguments().getString("UserId");
+
+			pageNumber = getArguments().getInt("PageNumber");
+			numPages = getArguments().getInt("NumPages");
+
+			if(getArguments().getString("Search") != null) {
+				executeString = getArguments().getString("Search");
+			} else {
+				if(threadId == null) {
+					executeString = "https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&page=" + pageNumber;
+				} else {
+					executeString = "https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&threadid="+ threadId +"&page=" + pageNumber;
+				}
+			}
+
+
+			getMyPostsTask = new GetMyPostsTask(mActivity, postFetched);
+			getMyPostsTask.execute(executeString);
+		} else {
+			pageNumber = savedInstanceState.getInt("PageNumber");
+			numPages = savedInstanceState.getInt("NumPages");
+		}
+
+
+
     }
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -120,23 +149,21 @@ public class MyPostsFragment extends ListFragment {
 		TextView headerRight;
 		String numPagesText;
 
-		if(savedInstanceState == null) {
-			String userId = Integer.toString(SharedPrefs.getPreference(mActivity, "user", "ID"));
-
-			pageNumber = getArguments().getInt("PageNumber");
-			numPages = getArguments().getInt("NumPages");
-			getMyPostsTask = new GetMyPostsTask(mActivity, postFetched);
-			getMyPostsTask.execute("https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&page=" + pageNumber);
-		} else {
-			pageNumber = savedInstanceState.getInt("PageNumber");
-			numPages = savedInstanceState.getInt("NumPages");
-		}
-
 		numPagesText = "Sida " + pageNumber + " av " + numPages;
 
 		headerRight = (TextView)view.findViewById(R.id.headerright);
         header = (TextView)view.findViewById(R.id.headerleft);
-        header.setText("Mina inlägg");
+
+		if(userId != null) {
+			if(userId.equals(Integer.toString(SharedPrefs.getPreference(mActivity, "user", "ID")))) {
+				header.setText("Mina inlägg");
+			} else {
+				header.setText("Inlägg");
+			}
+		} else {
+			header.setText("Sökresultat");
+		}
+
 		headerRight.setText(numPagesText);
 
         return view;
