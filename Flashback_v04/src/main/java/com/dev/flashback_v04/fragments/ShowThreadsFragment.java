@@ -26,7 +26,6 @@ import com.dev.flashback_v04.adapters.ShowThreadsAdapter;
 import com.dev.flashback_v04.interfaces.Callback;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
-import java.lang.Thread;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -66,7 +65,9 @@ public class ShowThreadsFragment extends ListFragment {
         protected Boolean doInBackground(String... strings) {
             try {
                 // Url, Callback
-                mParser.getCategoryContent(strings[0], mProgressUpdate);
+                //mParser.getCategoryContent(strings[0], mProgressUpdate);
+				NewParser parser = new NewParser(mContext);
+				parser.getForums(strings[0], mProgressUpdate);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -97,7 +98,9 @@ public class ShowThreadsFragment extends ListFragment {
         @Override
         protected Boolean doInBackground(String... strings) {
             try {
-                mParser.getForumContents(strings[0], mProgressUpdate);
+                //mParser.getForumContents(strings[0], mProgressUpdate);
+				NewParser parser = new NewParser(mContext);
+				parser.getThreads(strings[0], mProgressUpdate);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -312,7 +315,6 @@ public class ShowThreadsFragment extends ListFragment {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        registerForContextMenu(getListView());
     }
 
     @Override
@@ -324,50 +326,13 @@ public class ShowThreadsFragment extends ListFragment {
 			((MainActivity)mActivity).openForum(url, forumname);
 		} else {
 			String url = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadLink");
-            int numpages = Integer.parseInt(mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadNumPages"));
-            String threadname = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadName");
-            try {
-                ((MainActivity)mActivity).openThread(url, 0, threadname);
-            } catch(Exception e) {
-                e.printStackTrace();
-            }
-		}
-	}
-
-	@Override
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-		MenuInflater inflater = mActivity.getMenuInflater();
-		inflater.inflate(R.menu.thread_context, menu);
-	}
-
-	@Override
-	public boolean onContextItemSelected(MenuItem item) {
-        // Workaround. The wrong fragment was being accessed by the contextmenu
-        // http://stackoverflow.com/questions/5297842/how-to-handle-oncontextitemselected-in-a-multi-fragment-activity
-        if( getUserVisibleHint() == false )
-        {
-            return false;
-        }
-		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-			switch (item.getItemId()) {
-				case R.id.gotolastpage:
-                    int position = info.position;
-                    String url = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadLink");
-                    int numpages = Integer.parseInt(this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadNumPages"));
-                    String threadname = this.mAdapter.getThreads().get(position-this.mAdapter.getForums().size()).get("ThreadName");
-                    Bundle args = new Bundle();
-                    args.putInt("LastPage", numpages);
-                    args.putString("Url", url);
-                    args.putString("ThreadName", threadname);
-
-                    ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
-
-					return true;
-				default:
-					return super.onContextItemSelected(item);
+			String threadname = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadName");
+			try {
+				((MainActivity)mActivity).openThread(url, 0, threadname);
+			} catch(Exception e) {
+				e.printStackTrace();
 			}
-
+		}
 	}
 
 }

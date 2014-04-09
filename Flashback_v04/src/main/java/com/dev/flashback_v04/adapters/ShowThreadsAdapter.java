@@ -2,6 +2,8 @@ package com.dev.flashback_v04.adapters;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.activities.MainActivity;
 
 
 import java.util.ArrayList;
@@ -82,6 +85,7 @@ public class ShowThreadsAdapter extends BaseAdapter {
         ImageView img = null;
         ImageView pinned = null;
         ImageView locked = null;
+		ImageView lastPage = null;
 
 		int type = getItemViewType(position);
 
@@ -98,7 +102,7 @@ public class ShowThreadsAdapter extends BaseAdapter {
 					view = mInflater.inflate(R.layout.thread_item, null);
 					break;
 			}
-            //TODO: This can change the sidebar-color for threads depending on if it's locked/pinned/etc
+            //TODO: Maybe this can change color for threads depending on if it's locked/pinned/etc
             img = (ImageView)view.findViewById(R.id.imageView);
             img.setBackgroundColor(Color.TRANSPARENT);
 		}
@@ -118,12 +122,36 @@ public class ShowThreadsAdapter extends BaseAdapter {
                 lastPost = (TextView)view.findViewById(R.id.lastPost);
                 pinned = (ImageView)view.findViewById(R.id.pinned);
                 locked = (ImageView)view.findViewById(R.id.locked);
+				lastPage = (ImageView)view.findViewById(R.id.thread_gotolastpage);
+
+				final String url = getThreads().get(position).get("ThreadLink");
+				final int numpages = Integer.parseInt(getThreads().get(position).get("ThreadNumPages"));
+				final String threadname = getThreads().get(position).get("ThreadName");
+
+				lastPage.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						Bundle args = new Bundle();
+						args.putInt("LastPage", numpages);
+						args.putString("Url", url);
+						args.putString("ThreadName", threadname);
+
+						((MainActivity)mContext).onOptionSelected(R.id.gotolastpage, args);
+					}
+				});
 
                 if(mThreads.get(position).get("ThreadSticky").equals("true")) {
                     pinned.setVisibility(View.VISIBLE);
                 } else {
                     pinned.setVisibility(View.INVISIBLE);
                 }
+
+				if(mThreads.get(position).get("BoldTitle").equals("true")) {
+					threadTitle.setTypeface(Typeface.DEFAULT_BOLD);
+				} else {
+					threadTitle.setTypeface(Typeface.DEFAULT);
+				}
+
                 if(mThreads.get(position).get("ThreadLocked").equals("true")) {
                     locked.setVisibility(View.VISIBLE);
                 } else {

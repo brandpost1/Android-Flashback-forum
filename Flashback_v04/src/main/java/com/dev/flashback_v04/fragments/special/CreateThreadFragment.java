@@ -1,6 +1,7 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -11,6 +12,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -84,6 +86,10 @@ public class CreateThreadFragment extends Fragment {
                 bundle.putString("ThreadMessage", threadMessage.getText().toString());
                 bundle.putString("ForumUrl", forumLink);
                 bundle.putString("ForumName", forumName);
+
+				// Close keyboard
+				InputMethodManager imm = (InputMethodManager)mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+				imm.hideSoftInputFromWindow(threadMessage.getWindowToken(), 0);
 
                 NewThreadTask newThreadTask = new NewThreadTask(mActivity, bundle);
 

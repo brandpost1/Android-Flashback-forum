@@ -14,7 +14,6 @@ import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowCategoriesAdapter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-06-25.

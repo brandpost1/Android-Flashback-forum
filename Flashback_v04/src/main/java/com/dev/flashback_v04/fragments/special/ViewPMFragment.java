@@ -1,20 +1,24 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.special.ViewPMAdapter;
 import com.dev.flashback_v04.interfaces.Callback;
 
@@ -59,7 +63,9 @@ public class ViewPMFragment extends ListFragment {
 	private Context mContext;
 	private ViewPMAdapter pmAdapter;
 	private Callback mCallback;
-
+	private String pmID;
+	private String from;
+	private String header;
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -75,6 +81,7 @@ public class ViewPMFragment extends ListFragment {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setHasOptionsMenu(true);
 
 		pmAdapter = new ViewPMAdapter(mContext);
 		mCallback = new Callback<ArrayList<Post>>() {
@@ -86,8 +93,11 @@ public class ViewPMFragment extends ListFragment {
 		};
 		setListAdapter(pmAdapter);
 
-		String url = getArguments().getString("Link");
+		pmID = getArguments().getString("PMId");
+		from = getArguments().getString("From");
+		header = getArguments().getString("Header");
 
+		String url = getArguments().getString("Link");
 		GetPMTask task = new GetPMTask(mContext, mCallback);
 		task.execute(url);
 
@@ -100,11 +110,46 @@ public class ViewPMFragment extends ListFragment {
 		TextView headerRight = (TextView)view.findViewById(R.id.headerright);
 		headerRight.setText("");
 
-		headerLeft.setText("Privat meddelande");
+		headerLeft.setText(header);
 
 
 		return view;
 	}
 
+	@Override
+	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		inflater.inflate(R.menu.viewpmmenu, menu);
+
+		super.onCreateOptionsMenu(menu, inflater);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+			case R.id.newpm_forward:
+				Bundle newpmforward = new Bundle();
+				newpmforward.putString("Forward", "1");
+				newpmforward.putString("PMId", pmID);
+
+				if( header.startsWith("VB: ") || header.startsWith("Sv: ") ) header = header.substring(4);
+
+				newpmforward.putString("Header", "VB: " + header);
+				newpmforward.putString("Message", "[QUOTE="+from+"]" + ((Post)pmAdapter.getItem(0)).getQuote() + "[/QUOTE]");
+				((MainActivity)mContext).onOptionSelected(R.id.new_private_message, newpmforward);
+				break;
+			case R.id.newpm_reply:
+				Bundle newpmreply = new Bundle();
+				newpmreply.putString("Recipient", from);
+				newpmreply.putString("PMId", pmID);
+
+				if( header.startsWith("Sv: ") || header.startsWith("VB: ") ) header = header.substring(4);
+
+				newpmreply.putString("Header", "Sv: " + header);
+				newpmreply.putString("Message", "[QUOTE="+from+"]" + ((Post)pmAdapter.getItem(0)).getQuote() + "[/QUOTE]");
+				((MainActivity)mContext).onOptionSelected(R.id.new_private_message, newpmreply);
+				break;
+		}
+		return super.onOptionsItemSelected(item);
+	}
 
 }

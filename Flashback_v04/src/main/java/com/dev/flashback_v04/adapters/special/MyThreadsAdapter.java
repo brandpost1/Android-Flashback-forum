@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.activities.MainActivity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,6 +62,8 @@ public class MyThreadsAdapter extends BaseAdapter {
 		ImageView img = null;
 		ImageView pinned = null;
 		ImageView locked = null;
+		ImageView lastPage = null;
+
 
 		if(view == null) {
 			view = mInflater.inflate(R.layout.my_threads_item, null);
@@ -72,6 +75,16 @@ public class MyThreadsAdapter extends BaseAdapter {
 		lastPost = (TextView)view.findViewById(R.id.lastPost);
 		pinned = (ImageView)view.findViewById(R.id.pinned);
 		locked = (ImageView)view.findViewById(R.id.locked);
+		lastPage = (ImageView)view.findViewById(R.id.search_gotolastpage);
+
+		final String url = mItems.get(position).get("ThreadLink");
+		final String name = mItems.get(position).get("ThreadName");
+		lastPage.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				((MainActivity)mContext).openThread(url, -2, name);
+			}
+		});
 
 		if(mItems.get(position).get("ThreadSticky").equals("True")) {
 			pinned.setVisibility(View.VISIBLE);

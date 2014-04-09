@@ -4,11 +4,9 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.LoginHandler;
-import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.interfaces.RedirectCallback;
 

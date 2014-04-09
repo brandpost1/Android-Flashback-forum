@@ -66,7 +66,6 @@ public class PMFragment extends ListFragment {
     private PrivateMessagesAdapter privateMessagesAdapter;
     private GetPMTask mGetPMsTask;
     private Callback messageFetched;
-	private Button mLoadButton;
 
     private int pageNumber;
     private int numPages;
@@ -118,6 +117,8 @@ public class PMFragment extends ListFragment {
 		} else {
 			pageNumber = savedInstanceState.getInt("PageNumber");
 			numPages = savedInstanceState.getInt("NumPages");
+			fragmentType = savedInstanceState.getInt("FragmentType");
+
 		}
 
     }
@@ -151,7 +152,8 @@ public class PMFragment extends ListFragment {
 				loadPmList();
 				break;
 			case R.id.new_private_message:
-
+				Bundle args = new Bundle();
+				((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
 				break;
 		}
  		return super.onOptionsItemSelected(item);
@@ -160,16 +162,22 @@ public class PMFragment extends ListFragment {
 	@Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         super.onListItemClick(l, v, position, id);
+		Bundle args = new Bundle();
 		String url = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("Link");
+		String from = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("From");
+		String header = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("Headline");
 		// Get PMId from url
 		String pmId;
 		try {
 			pmId = url.substring(url.indexOf("pmid="), url.indexOf("&", url.indexOf("pmid="))).split("=")[1];
+			args.putString("PMId", pmId);
 		} catch (Exception e) {
 
 		}
-
-		((MainActivity)mActivity).openPrivateMessage(url);
+		args.putString("Link", url);
+		args.putString("Header", header);
+		args.putString("From", from);
+		((MainActivity)mActivity).openPrivateMessage(args);
     }
 
 	private void clearPmList() {

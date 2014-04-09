@@ -6,7 +6,6 @@ import android.os.AsyncTask;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.*;
-import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.interfaces.OnTaskComplete;
 
 import java.util.ArrayList;

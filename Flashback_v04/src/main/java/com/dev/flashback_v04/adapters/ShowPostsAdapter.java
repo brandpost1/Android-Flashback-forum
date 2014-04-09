@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 
 import android.graphics.drawable.Drawable;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 
@@ -14,7 +15,6 @@ import android.text.InputType;
 import android.text.Spannable;
 
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -30,6 +30,7 @@ import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.asynctasks.PostsParserTask;
 import com.dev.flashback_v04.interfaces.OnTaskComplete;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
+import com.google.android.gms.plus.model.people.Person;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
     static final int POST_CODE_MESSAGE = 9;
     static final int POST_CODE_FOOTER = 10;
     static final int POST_QUOTE_ANONHEADER = 11;
+    static final int BLOCKED_POST = 12;
 
 	private Context mContext;
 	private PostsParserTask mPostsParserTask;
@@ -101,11 +103,14 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 
 	@Override
 	public int getViewTypeCount() {
-		return 12;
+		return 13;
 	}
 
     @Override
     public int getItemViewType(int position) {
+		if(rows.get(position)[0].equals("[BLOCKEDUSER]")) {
+			return BLOCKED_POST;
+		}
         if(rows.get(position)[0].equals("[POSTHEADER]")) {
             return POST_HEADER;
         }
@@ -170,6 +175,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         ImageView quotePost = null;
         CheckBox plusQuote = null;
         ImageView reportPost = null;
+		ImageView editPost = null;
         // Code
         TextView code = null;
 
@@ -179,6 +185,9 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 
         if(view == null) {
             switch (type) {
+				case BLOCKED_POST:
+					view = mInflater.inflate(R.layout.blocked_post, null);
+					break;
                 case POST_HEADER:
                     view = mInflater.inflate(R.layout.post_head, null);
                     break;
@@ -219,9 +228,31 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         }
 
         switch(type) {
+			case BLOCKED_POST:
+				author = (TextView)view.findViewById(R.id.user_name);
+				date = (TextView)view.findViewById(R.id.post_date);
+				message = (TextView)view.findViewById(R.id.post_text);
+
+				// Set selectable if API > 11.
+				//TODO: Fix for < 11
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					message.setTextIsSelectable(true);
+					author.setTextIsSelectable(true);
+				}
+
+				author.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getAuthor());
+				date.setText(mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getDate());
+				message.setText(rows.get(position)[1]);
+				break;
             case POST_HEADER:
                 author = (TextView)view.findViewById(R.id.user_name);
-                usertype = (TextView)view.findViewById(R.id.user_status);
+
+				// Set selectable if API > 11.
+				//TODO: Fix for < 11
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+					author.setTextIsSelectable(true);
+
+				usertype = (TextView)view.findViewById(R.id.user_status);
                 postnr = (TextView)view.findViewById(R.id.post_nr);
                 date = (TextView)view.findViewById(R.id.post_date);
                 posts = (TextView)view.findViewById(R.id.user_posts_count);
@@ -295,11 +326,16 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 break;
             case POST_MESSAGE:
                 message = (TextView)view.findViewById(R.id.post_text);
-                message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+                //message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
                     message.setText(smileymessage);
-					message.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						message.setTextIsSelectable(true);
+					//message.setInputType(InputType.TYPE_NULL);
 					message.setSingleLine(false);
                 }
                 break;
@@ -312,7 +348,13 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     String text = (String)spoiler.getTag(R.id.SPOILER_MESSAGE);
                     Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
                     spoiler.setText(smileyspoiler);
-					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+					//spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						spoiler.setTextIsSelectable(true);
+
 					spoiler.setSingleLine(false);
                 }
                 spoiler.setOnClickListener(new View.OnClickListener() {
@@ -352,7 +394,13 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
                     quote.setText(smileymessage);
-					quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+					//quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						quote.setTextIsSelectable(true);
+
 					quote.setSingleLine(false);
                 }
                 break;
@@ -365,6 +413,11 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     String text = (String)spoiler.getTag(R.id.QUOTE_SPOILER_MESSAGE);
                     Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
                     spoiler.setText(smileyspoiler);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						spoiler.setTextIsSelectable(true);
 
 					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);
@@ -392,13 +445,35 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 quotePost = (ImageView)view.findViewById(R.id.quote);
                 plusQuote = (CheckBox)view.findViewById(R.id.plusquote);
                 reportPost = (ImageView)view.findViewById(R.id.report);
+				editPost = (ImageView)view.findViewById(R.id.edit_post);
 
                 // Show some Logged-in-only buttons
                 if(!LoginHandler.loggedIn(mContext)) {
-                    quotePost.setVisibility(View.GONE);
-                    plusQuote.setVisibility(View.GONE);
-                    reportPost.setVisibility(View.GONE);
-                }
+					quotePost.setVisibility(View.GONE);
+					plusQuote.setVisibility(View.GONE);
+					reportPost.setVisibility(View.GONE);
+					editPost.setVisibility(View.GONE);
+				}
+
+				if(LoginHandler.loggedIn(mContext)) {
+					final String editPostUrl = mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getEditUrl();
+					if(!editPostUrl.isEmpty()) {
+						// Post still editable, so make it visible. Also set a clicklistener
+						editPost.setVisibility(View.VISIBLE);
+						editPost.setOnClickListener(new View.OnClickListener() {
+							@Override
+							public void onClick(View view) {
+								Bundle bundle = new Bundle();
+								bundle.putString("EditPostUrl", editPostUrl);
+								((MainActivity)mContext).editPost(bundle);
+							}
+						});
+					} else {
+						editPost.setVisibility(View.GONE);
+					}
+				} else {
+					editPost.setVisibility(View.GONE);
+				}
 
                 if(rows.get(position)[1] != null) {
 
@@ -496,6 +571,11 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 
 
         for(int i = 0; i < rows.size(); i++) {
+			if(rows.get(i)[0].equals("[BLOCKEDUSER]")) {
+				headers++;
+				rows.get(i)[2] = Integer.toString(headers);
+				continue;
+			}
             if(rows.get(i)[0].equals("[POSTHEADER]")) {
                 headers++;
                 rows.get(i)[2] = Integer.toString(headers);

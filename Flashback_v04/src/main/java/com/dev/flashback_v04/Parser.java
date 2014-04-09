@@ -9,10 +9,8 @@ import android.widget.Toast;
 
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.special.CurrentThreadsAdapter;
-import com.dev.flashback_v04.fragments.special.MyQuotesFragment;
 import com.dev.flashback_v04.interfaces.Callback;
 
-import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -84,7 +82,7 @@ public class Parser {
             // Check for cookie
             if(!cookie.isEmpty()) {
                 // Connect with cookie
-                currentSite = LoginHandler.cookieConnect(url, cookie);
+                currentSite = LoginHandler.cookieConnect(url, cookie, mContext);
             } else {
                 // Connect without cookie
                 currentSite = LoginHandler.basicConnect(url);
@@ -280,6 +278,7 @@ public class Parser {
 		String pages;
 		String lastPage;
         String lastPost;
+		String isBold;
         Boolean locked;
 		// Get all non-sticky threads, name and href
 		// #threadslist tr:not(.tr_sticky) td.alt1.threadslistrow div a[id^=thread]
@@ -297,7 +296,15 @@ public class Parser {
 
         for(Element st : sticky) {
             map = new java.util.HashMap<String, String>();
-            name = st.select("td.alt1.td_title a[id^=thread_title]").text();
+            //name = st.select("td.alt1.td_title a[id^=thread_title]").text();
+			name = st.select("td.alt1.td_title div strong a[id^=thread_title]").text();
+			if(name.isEmpty()) {
+				// Not bold text
+				name = st.select("td.alt1.td_title div a[id^=thread_title]").text();
+				isBold = "false";
+			} else {
+				isBold = "true";
+			}
             link = st.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
             author = st.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
             views = st.select("td.alt2.td_views").text();
@@ -329,6 +336,7 @@ public class Parser {
             map.put("ThreadLink", link);
             map.put("ThreadNumPages", pages);
             map.put("LastPageUrl", lastPage);
+			map.put("BoldTitle", isBold);
 
             mProgressUpdate.onTaskComplete(map);
 
@@ -336,7 +344,15 @@ public class Parser {
 
 		for(Element e : threads) {
             map = new java.util.HashMap<String, String>();
-            name = e.select("td.alt1.td_title a[id^=thread_title]").text();
+            //name = e.select("td.alt1.td_title a[id^=thread_title]").text();
+			name = e.select("td.alt1.td_title div strong a[id^=thread_title]").text();
+			if(name.isEmpty()) {
+				// Not bold text
+				name = e.select("td.alt1.td_title div a[id^=thread_title]").text();
+				isBold = "false";
+			} else {
+				isBold = "true";
+			}
             link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
             author = e.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
             views = e.select("td.alt2.td_views").text();
@@ -368,6 +384,7 @@ public class Parser {
             map.put("ThreadLink", link);
             map.put("ThreadNumPages", pages);
             map.put("LastPageUrl", lastPage);
+			map.put("BoldTitle", isBold);
 
             mProgressUpdate.onTaskComplete(map);
 
@@ -383,15 +400,17 @@ public class Parser {
 	public int getThreadPosition(String url) {
 		int threadPos = 0;
 
-		String temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").text();
-		if(!temp.equals("")) {
-			try {
-				threadPos = Integer.parseInt(temp);
-			} catch (NumberFormatException e) {
-				e.printStackTrace();
+		String temp = null;
+		if(currentSite != null) {
+			temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").text();
+			if (!temp.equals("")) {
+				try {
+					threadPos = Integer.parseInt(temp);
+				} catch (NumberFormatException e) {
+					e.printStackTrace();
+				}
 			}
 		}
-
 		return threadPos;
 	}
 
@@ -404,16 +423,16 @@ public class Parser {
 		int threadId = 0;
 
 		String temp;
-
-		try {
-			temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
-			threadId = Integer.parseInt(temp.split("/t")[1]);
-		} catch (IndexOutOfBoundsException e) {
-			showErrorMsg("Error - Could not get threadId");
-		} catch (NullPointerException e) {
-			showErrorMsg("Error - Could not get threadId");
+		if(currentSite != null) {
+			try {
+				temp = currentSite.select("table.nborder.forum-navbar tbody tr td strong a").attr("abs:href");
+				threadId = Integer.parseInt(temp.split("/t")[1]);
+			} catch (IndexOutOfBoundsException e) {
+				showErrorMsg("Error - Could not get threadId");
+			} catch (NullPointerException e) {
+				showErrorMsg("Error - Could not get threadId");
+			}
 		}
-
 		return threadId;
 	}
 
@@ -481,9 +500,14 @@ public class Parser {
 		String regdate;
         String postUrl;
 		String threadId = null;
+		String editUrl = "";
 
-		if(url.contains("/t")) {
-			threadId = url.split("/t")[1];
+		threadId = currentSite.select("td.navbar a").attr("abs:href");
+		if(threadId.contains("/t")) {
+			threadId = threadId.split("/t")[1];
+			if(threadId.contains("p")) {
+				threadId = threadId.split("p")[0];
+			}
 		}
 
 		Elements message;
@@ -492,362 +516,378 @@ public class Parser {
 		for(Element post : posts) {
 			final Post newPost = new Post();
 
-			date = post.select("tbody tr td.thead.post-date").first().ownText();
-			orderNr = "#" + post.select("tbody tr td.thead.post-date span a").text();
-            postUrl = post.select("tbody tr td.thead.post-date span a").attr("abs:href");
-			author = post.select("tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
-			membertype = post.select("table.post-user-title").text();
-			online = post.select("div[class^=icon-user]").attr("title");
-			userProfileUrl = post.select("a.bigusername").attr("abs:href");
-			avatarurl = post.select("a.post-user-avatar img").attr("src");
-			regdate = post.select("div.post-user-info.smallfont div:contains(Reg)").text();
-			numposts = post.select("tbody tr[style^=vertical] td.alt2.post-left div.post-user div.post-user-info.smallfont div:nth-child(2)").text();
-			newPost.setDate(date);
-			newPost.setOrderNr(orderNr);
-			newPost.setAuthor(author);
-			newPost.setMembertype(membertype);
-			newPost.setOnline(online);
-			newPost.setUserProfileUrl(userProfileUrl);
-			newPost.setAvatarurl(avatarurl);
-			newPost.setRegdate(regdate);
-			newPost.setNumposts(numposts);
-            newPost.setPostUrl(postUrl);
-			newPost.setThreadId(threadId);
-			message = post.select("div.post_message");
+			if(!post.select("a.fr.show-ignored-post").isEmpty()) {
+				// Ignored user in this post
+				String blockedMessage = post.select("tbody tr td.alt1 div.smallfont").text();
+				String blockedUser = post.select("tbody tr td.alt1 div.smallfont strong").text();
+				String blockedDate = post.select("tbody tr[title^=Inlägg] td.thead").first().ownText();
+				newPost.setDate(blockedDate);
+				newPost.setAuthor(blockedUser);
+				newPost.addRow("[BLOCKEDUSER]", blockedMessage);
+			} else {
 
-            // Links in posts.
-            // div#posts div[id^=edit] td.alt1.post-right div.post_message a
-            for(int i = 0; i < post.select("td.alt1.post-right div.post_message a").size(); i++) {
-                String text = post.select("td.alt1.post-right div.post_message a").get(i).attr("href");
-                if(!text.contains("flashback.org") && text.startsWith("/leave.php") && !(text.length() < 14) ) {
-                    try {
-                        text = text.substring(13);
-                    } catch (IndexOutOfBoundsException e) {
-                        e.printStackTrace();
-                        text = "[FB-ParseError] Please report bug in official thread";
-                    }
+				if(!post.select("a[href^=editpost.php").isEmpty()) {
+					String temp = post.select("a[href^=editpost.php]").attr("abs:href");
+					newPost.setEditUrl(temp);
+				} else {
+					newPost.setEditUrl("");
+				}
 
-                }
+				date = post.select("tbody tr td.thead.post-date").first().ownText();
+				orderNr = "#" + post.select("tbody tr td.thead.post-date span a").text();
+				postUrl = post.select("tbody tr td.thead.post-date span a").attr("abs:href");
+				author = post.select("tbody tr[style^=vertical] td.alt2.post-left div[id^=postmenu]").text();
+				membertype = post.select("table.post-user-title").text();
+				online = post.select("div[class^=icon-user]").attr("title");
+				userProfileUrl = post.select("a.bigusername").attr("abs:href");
+				avatarurl = post.select("a.post-user-avatar img").attr("src");
+				regdate = post.select("div.post-user-info.smallfont div:contains(Reg)").text();
+				numposts = post.select("tbody tr[style^=vertical] td.alt2.post-left div.post-user div.post-user-info.smallfont div:nth-child(2)").text();
+				newPost.setDate(date);
+				newPost.setOrderNr(orderNr);
+				newPost.setAuthor(author);
+				newPost.setMembertype(membertype);
+				newPost.setOnline(online);
+				newPost.setUserProfileUrl(userProfileUrl);
+				newPost.setAvatarurl(avatarurl);
+				newPost.setRegdate(regdate);
+				newPost.setNumposts(numposts);
+				newPost.setPostUrl(postUrl);
+				newPost.setThreadId(threadId);
+				message = post.select("div.post_message");
 
-                try {
-                    text = URLDecoder.decode(text, "UTF-8");
-                } catch (UnsupportedEncodingException e) {
-                    throw new AssertionError("UTF-8 is unknown");
-                }
+				// Links in posts.
+				// div#posts div[id^=edit] td.alt1.post-right div.post_message a
+				for (int i = 0; i < post.select("td.alt1.post-right div.post_message a").size(); i++) {
+					String text = post.select("td.alt1.post-right div.post_message a").get(i).attr("href");
+					if (!text.contains("flashback.org") && text.startsWith("/leave.php") && !(text.length() < 14)) {
+						try {
+							text = text.substring(13);
+						} catch (IndexOutOfBoundsException e) {
+							e.printStackTrace();
+							text = "[FB-ParseError] Please report bug in official thread";
+						}
 
-                post.select("td.alt1.post-right div.post_message a").get(i).text(text);
-            }
-            // Remove nested spoilers in quotes. (Spoilers containing spoilers, in a quote)
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler div.alt2.post-bbcode-spoiler").before("[NESTED SPOILER]<br>");
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler div.alt2.post-bbcode-spoiler").remove();
+					}
 
-            // Remove codetags within quotes
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:5px 10px;]").before("[CITERAD KOD]<br>");
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:5px 10px;]").remove();
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:20px; margin-top:5px]").before("[CITERAD KOD]<br>");
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:20px; margin-top:5px]").remove();
+					try {
+						text = URLDecoder.decode(text, "UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						throw new AssertionError("UTF-8 is unknown");
+					}
 
-            // Remove codeheader "Kod:"
-			message.select("div[style=margin:5px 10px;] > div:first-child").remove();
-            // Surround code with own tags
-			message.select("pre.alt2.post-bbcode-code").before("{phptag}").after("{/phptag}");
+					post.select("td.alt1.post-right div.post_message a").get(i).text(text);
+				}
+				// Remove nested spoilers in quotes. (Spoilers containing spoilers, in a quote)
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler div.alt2.post-bbcode-spoiler").before("[NESTED SPOILER]<br>");
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler div.alt2.post-bbcode-spoiler").remove();
 
-            // Remove phpcode header "Kod:"
-            message.select("div[style=margin:20px; margin-top:5px] > div:first-child").remove();
-            // Surround code with own tags
-			message.select("div.alt2.post-bbcode-php").before("{phptag}").after("{/phptag}");
+				// Remove codetags within quotes
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:5px 10px;]").before("[CITERAD KOD]<br>");
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:5px 10px;]").remove();
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:20px; margin-top:5px]").before("[CITERAD KOD]<br>");
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div[style=margin:20px; margin-top:5px]").remove();
 
-            // Remove codetags within spoilers
-            message.select("div.alt2.post-bbcode-spoiler div[style=margin:5px 10px;]").before("[SPOILAD KOD]<br>");
-            message.select("div.alt2.post-bbcode-spoiler div[style=margin:5px 10px;]").remove();
-            message.select("div.alt2.post-bbcode-spoiler div[style=margin:20px; margin-top:5px]").before("[SPOILAD KOD]<br>");
-            message.select("div.alt2.post-bbcode-spoiler div[style=margin:20px; margin-top:5px]").remove();
+				// Remove codeheader "Kod:"
+				message.select("div[style=margin:5px 10px;] > div:first-child").remove();
+				// Surround code with own tags
+				message.select("pre.alt2.post-bbcode-code").before("{phptag}").after("{/phptag}");
 
-			// Remove spoiler headers
-			for(int i = 0; i < message.select("div[style=margin:5px 20px 20px 20px]").size(); i++) {
-				message.select("div[style=margin:5px 20px 20px 20px] div.smallfont").remove();
-			}
-			// Remove quote header
-			message.select("div.post-quote-holder > div.smallfont.post-quote-title").remove();
+				// Remove phpcode header "Kod:"
+				message.select("div[style=margin:20px; margin-top:5px] > div:first-child").remove();
+				// Surround code with own tags
+				message.select("div.alt2.post-bbcode-php").before("{phptag}").after("{/phptag}");
 
-            // Replace smileys with [IMAGE...] tags
-            for(int i = 0; i < message.size(); i++) {
-                for(int j = 0; j < message.get(i).select("img").size(); j++) {
-                    message.get(i).select("img").get(j).before("[IMAGE"+message.get(i).select("img").get(j).attr("title").toUpperCase()+"]");
-                }
-            }
+				// Remove codetags within spoilers
+				message.select("div.alt2.post-bbcode-spoiler div[style=margin:5px 10px;]").before("[SPOILAD KOD]<br>");
+				message.select("div.alt2.post-bbcode-spoiler div[style=margin:5px 10px;]").remove();
+				message.select("div.alt2.post-bbcode-spoiler div[style=margin:20px; margin-top:5px]").before("[SPOILAD KOD]<br>");
+				message.select("div.alt2.post-bbcode-spoiler div[style=margin:20px; margin-top:5px]").remove();
+
+				// Remove spoiler headers
+				for (int i = 0; i < message.select("div[style=margin:5px 20px 20px 20px]").size(); i++) {
+					message.select("div[style=margin:5px 20px 20px 20px] div.smallfont").remove();
+				}
+				// Remove quote header
+				message.select("div.post-quote-holder > div.smallfont.post-quote-title").remove();
+
+				// Replace smileys with [IMAGE...] tags
+				for (int i = 0; i < message.size(); i++) {
+					for (int j = 0; j < message.get(i).select("img").size(); j++) {
+						message.get(i).select("img").get(j).before("[IMAGE" + message.get(i).select("img").get(j).attr("title").toUpperCase() + "]");
+					}
+				}
 
 
+				// Surround regular spoilers and spoilers within quotes
+				//message.select(">div[style=margin:5px 20px 20px 20px]").before("{spoilertext}").after("{/spoilertext}");
+				message.select("div.post_message > div > div.alt2.post-bbcode-spoiler").before("{spoilertext}").after("{/spoilertext}");
+				//message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote > div > div[style=margin:5px 20px 20px 20px]").before("{quotespoilertext}").after("{/quotespoilertext}");
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler").before("{quotespoilertext}").after("{/quotespoilertext}");
 
-			// Surround regular spoilers and spoilers within quotes
-			//message.select(">div[style=margin:5px 20px 20px 20px]").before("{spoilertext}").after("{/spoilertext}");
-			message.select("div.post_message > div > div.alt2.post-bbcode-spoiler").before("{spoilertext}").after("{/spoilertext}");
-			//message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote > div > div[style=margin:5px 20px 20px 20px]").before("{quotespoilertext}").after("{/quotespoilertext}");
-			message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.alt2.post-bbcode-spoiler").before("{quotespoilertext}").after("{/quotespoilertext}");
+				// Remove nested quotes in quotes
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.post-quote-holder").remove();
 
-            // Remove nested quotes in quotes
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div.post-quote-holder").remove();
+				// Remove nested quotes within spoilers
+				message.select("div.alt2.post-bbcode-spoiler div.post-quote-holder").remove();
 
-            // Remove nested quotes within spoilers
-            message.select("div.alt2.post-bbcode-spoiler div.post-quote-holder").remove();
+				// Surround quotes with {quote}{/quote}
+				message.select("div.post-quote-holder").before("{quote}").after("{/quote}");
 
-			// Surround quotes with {quote}{/quote}
-			message.select("div.post-quote-holder").before("{quote}").after("{/quote}");
+				// Distinguish between regular quotes, and quotes with no name in the header.
+				int quotesize = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").size();
 
-            // Distinguish between regular quotes, and quotes with no name in the header.
-            int quotesize = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").size();
-
-            for(int i = 0; i < quotesize; i++) {
-                //message);
-                String quotetext;
+				for (int i = 0; i < quotesize; i++) {
+					//message);
+					String quotetext;
 
                 /* Radbrytningar i citat */
-                message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).getElementsByTag("br").before("[newline]");
-                message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).getElementsByTag("br").remove();
+					message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).getElementsByTag("br").before("[newline]");
+					message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).getElementsByTag("br").remove();
 
 
                  /*
                 * Fails for some malformed quotes. One is present on https://www.flashback.org/t1672095p4
                 * Using 40 posts per page
                 * */
-                try {
-                    quotetext = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).text().trim();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    quotetext = "[FLASHBACK-APP]Error-quote";
-                }
+					try {
+						quotetext = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).text().trim();
+					} catch (Exception e) {
+						e.printStackTrace();
+						quotetext = "[FLASHBACK-APP]Error-quote";
+					}
 
                 /*
                 * Fails for some malformed quotes. One is present on https://www.flashback.org/t1672095p4
                 * Using 40 posts per page
                 * */
-                if (quotetext.startsWith("Ursprungligen postat av")) {
-                    String n;
-                    try {
-                        n = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong:first-child").get(i).text().trim();
-                    } catch(Exception e) {
-                        e.printStackTrace();
-                        n = "[FLASHBACK-APP]ERROR-Name";
-                    }
-
-                    String text;
-                    try {
-                        text = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div:nth-child(2)").get(i).text().trim();
-                    } catch(Exception e) {
-                        e.printStackTrace();
-                        text = "[FLASHBACK-APP]ERROR-Msg";
-                    }
-
-                   // String name = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong").get(i).text().trim();
-                    String name = n.trim();
-                    //message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote:has(div)").get(i).html("<strong>"+ name +"</strong>{quote_text}<div>"+text+"</div>{/quote_text}");
-                    message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).html("<strong>"+ name +"</strong>{quote_text}<div>"+text+"</div>{/quote_text}");
-                } else {
-                    //String text = message.select("div.post-quote-holder table.p2-4 tbody tr > td.alt2.post-quote:not(:has(div))").get(0).text().trim();
-                    String text = quotetext.trim();
-                    try {
-                        // https://www.flashback.org/t2267536p44
-                        message.select("div.post-quote-holder table.p2-4 tbody tr > td.alt2.post-quote").get(i).html("{anon_quote}{/anon_quote}{quote_text}<div>"+text+"</div>{/quote_text}");
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-
-                }
-            }
-            // Replace stuff in codetags
-            for(Element element : message.select("pre.alt2.post-bbcode-code")) {
-                element.text(element.text().replace(" ", "[SPACE]"));
-                element.text(element.text().replace("&nbsp;", "[SPACE]"));
-                element.text(element.text().replaceAll("\\t", "[SPACE][SPACE][SPACE][SPACE]"));
-                element.text(element.text().replaceAll("\\r", "[newline]"));
-            }
-
-            // Surround name of the quotee [newline]
-            message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong").before("{quoter_name}").after("{/quoter_name}");
-            //message);
-
-
-			String site = message.toString();
-            site = site.replaceAll("(?i)<br[^>]*> *", "[newline]");
-            site = site.replace("&nbsp;", "[SPACE]");
-			Element elem = Jsoup.parse(site);
-
-			site = elem.text().replace("<", "&lt;").replace(">", "&gt;");
-
-			Document doc =  Jsoup.parseBodyFragment(site);
-
-			site = doc.outerHtml();
-
-			site = site.replace("{anon_quote}", "<anon_quote>").replace("{/anon_quote}", "</anon_quote>");
-			site = site.replace("{quoter_name}", "<quoter_name>").replace("{/quoter_name}", "</quoter_name>");
-			site = site.replace("{quote}", "<quote>").replace("{/quote}", "</quote>");
-			site = site.replace("{quote_text}", "<quote_text>").replace("{/quote_text}", "</quote_text>");
-			site = site.replace("{spoilertext}", "<spoiler>").replace("{/spoilertext}", "</spoiler>");
-			site = site.replace("{quotespoilertext}", "<quotespoiler>").replace("{/quotespoilertext}", "</quotespoiler>");
-			site = site.replace("{phptag}", "<phptag>").replace("{/phptag}", "</phptag>");
-			site = site.replace("{codetag}", "<codetag>").replace("{/codetag}", "</codetag>");
-			//site = site.replace("[newline]", "\n");
-
-			doc = Jsoup.parseBodyFragment(site);
-			// Temporarily remove code- and php-tags
-			//doc.select("codetag").remove();
-			//doc.select("phptag").remove();
-
-			final ArrayList<String[]> postarr = new ArrayList<String[]>();
-			final boolean[] quoteOpen = new boolean[] {false};
-			final boolean[] messageOpen = new boolean[] {false};
-			final boolean[] spoilerOpen = new boolean[] {false};
-			final boolean[] quotespoilerOpen = new boolean[] {false};
-			final boolean[] quoteHeaderOpen = new boolean[] {false};
-            final boolean[] phptagOpen = new boolean[] {false};
-            final boolean[] anonQuoteHeaderOpen = new boolean[] {false};
-
-			Elements body = doc.select("body");
-
-			body.traverse(new NodeVisitor() {
-
-				@Override
-				public void head(Node node, int level) {
-					if(node instanceof TextNode && node.toString().length() != 1) {
-
-						if(newPost.getPostRows().get(newPost.getPostRows().size()-1)[0].equals("[QUOTEHEADER]") && quoteOpen[0] == true && quoteHeaderOpen[0] == true) {
-                            String quoteheader = ((TextNode) node).text();
-                            quoteheader = quoteheader.replace("<", "&lt;");
-                            quoteheader = quoteheader.replace(">", "&gt;");
-                            quoteheader = Jsoup.parse(quoteheader).text();
-                            quoteheader = quoteheader.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                            quoteheader = quoteheader.replace("&lt;", "<");
-                            quoteheader = quoteheader.replace("&gt;", ">");
-                            quoteheader = quoteheader.replace("[SPACE]", " ");
-                            newPost.getPostRows().get(newPost.getPostRows().size()-1)[1] = quoteheader.trim();
-
-						}
-						if(quoteOpen[0] == true && quotespoilerOpen[0] == false && quoteHeaderOpen[0] == false && anonQuoteHeaderOpen[0] == false) {
-                            String quotemsg = ((TextNode) node).text();
-                            quotemsg = quotemsg.replace("<", "&lt;");
-                            quotemsg = quotemsg.replace(">", "&gt;");
-                            quotemsg = Jsoup.parse(quotemsg).text();
-                            quotemsg = quotemsg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                            quotemsg = quotemsg.replace("&lt;", "<");
-                            quotemsg = quotemsg.replace("&gt;", ">");
-                            quotemsg = quotemsg.replace("[SPACE]", " ");
-                            newPost.addRow("[QUOTEMESSAGE]", quotemsg.trim());
+					if (quotetext.startsWith("Ursprungligen postat av")) {
+						String n;
+						try {
+							n = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong:first-child").get(i).text().trim();
+						} catch (Exception e) {
+							e.printStackTrace();
+							n = "[FLASHBACK-APP]ERROR-Name";
 						}
 
-						if(quoteOpen[0] == true && quotespoilerOpen[0] == true) {
-							if(newPost.getPostRows().get(newPost.getPostRows().size()-1)[0].equals("[QUOTESPOILER]")) {
-                                String quotespoilertext = ((TextNode) node).text();
-                                quotespoilertext = quotespoilertext.replace("<", "&lt;");
-                                quotespoilertext = quotespoilertext.replace(">", "&gt;");
-                                quotespoilertext = Jsoup.parse(quotespoilertext).text();
-                                quotespoilertext = quotespoilertext.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                                quotespoilertext = quotespoilertext.replace("&lt;", "<");
-                                quotespoilertext = quotespoilertext.replace("&gt;", ">");
-                                quotespoilertext = quotespoilertext.replace("[SPACE]", " ");
-                                newPost.getPostRows().get(newPost.getPostRows().size()-1)[1] = quotespoilertext.trim();
-							}
+						String text;
+						try {
+							text = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote div:nth-child(2)").get(i).text().trim();
+						} catch (Exception e) {
+							e.printStackTrace();
+							text = "[FLASHBACK-APP]ERROR-Msg";
 						}
-						if(quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == true) {
-							if(newPost.getPostRows().get(newPost.getPostRows().size()-1)[0].equals("[SPOILER]")) {
-                                String spoilertext = ((TextNode) node).text();
-                                spoilertext = spoilertext.replace("<", "&lt;");
-                                spoilertext = spoilertext.replace(">", "&gt;");
-                                spoilertext = Jsoup.parse(spoilertext).text();
-                                spoilertext = spoilertext.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                                spoilertext = spoilertext.replace("&lt;", "<");
-                                spoilertext = spoilertext.replace("&gt;", ">");
-                                spoilertext = spoilertext.replace("[SPACE]", " ");
-                                newPost.getPostRows().get(newPost.getPostRows().size()-1)[1] = spoilertext.trim();
-							}
-						}
-						if(quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == false && phptagOpen[0] == false) {
-                            String msg = ((TextNode) node).text();
-                            msg = msg.replace("<", "&lt;");
-                            msg = msg.replace(">", "&gt;");
-                            msg = Jsoup.parse(msg).text();
-                            msg = msg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                            msg = msg.replace("&lt;", "<");
-                            msg = msg.replace("&gt;", ">");
-                            msg = msg.replace("[SPACE]", " ");
-                            newPost.addRow("[MESSAGE]", msg.trim());
-						}
-                        if(quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == false && phptagOpen[0] == true) {
-                            String msg = ((TextNode) node).text();
-                            msg = msg.replace("<", "&lt;");
-                            msg = msg.replace(">", "&gt;");
-                            msg = Jsoup.parse(msg).text();
-                            msg = msg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
-                            msg = msg.replace("&lt;", "<");
-                            msg = msg.replace("&gt;", ">");
-                            msg = msg.replace("[SPACE]", " ");
-                            newPost.addRow("[PHPTAGMESSAGE]", msg.trim());
-                        }
-					}
 
-					if(node instanceof Element) {
-						if(node.nodeName().equals("body")) {
-                            newPost.addRow("[POSTHEADER]", "");
-						}
-						if(node.nodeName().equals("quotespoiler")) {
-                            newPost.addRow("[QUOTESPOILER]", "");
-							quotespoilerOpen[0] = true;
-						}
-                        if(node.nodeName().equals("quote")) {
-                            quoteOpen[0] = true;
-                        }
-						if(node.nodeName().equals("quoter_name")) {
-                            newPost.addRow("[QUOTEHEADER]", "");
-							//quoteOpen[0] = true;
-							quoteHeaderOpen[0] = true;
-						}
-                        if(node.nodeName().equals("anon_quote")) {
-                            newPost.addRow("[ANONQUOTEHEADER]", "");
-                            anonQuoteHeaderOpen[0] = true;
-                        }
-						if(node.nodeName().equals("spoiler")) {
-                            newPost.addRow("[SPOILER]", "");
-							spoilerOpen[0] = true;
-						}
-                        if(node.nodeName().equals("phptag")) {
-                            newPost.addRow("[PHPTAGHEADER]", "");
-                            phptagOpen[0] = true;
-                        }
-					}
-				}
-
-				@Override
-				public void tail(Node node, int level) {
-					if(node instanceof Element) {
-						if(node.nodeName().equals("quote_text")) {
-                            newPost.addRow("[QUOTEFOOTER]", "");
-							quoteOpen[0] = false;
-						}
-						if(node.nodeName().equals("quotespoiler")) {
-							quotespoilerOpen[0] = false;
-						}
-						if(node.nodeName().equals("quoter_name")) {
-							quoteHeaderOpen[0] = false;
-						}
-						if(node.nodeName().equals("spoiler")) {
-							spoilerOpen[0] = false;
-						}
-                        if(node.nodeName().equals("phptag")) {
-                            newPost.addRow("[PHPTAGFOOTER]", "");
-                            phptagOpen[0] = false;
-                        }
-                        if(node.nodeName().equals("anon_quote")) {
-                            anonQuoteHeaderOpen[0] = false;
-                        }
-						if(node.nodeName().equals("body")) {
-                            newPost.addRow("[POSTFOOTER]", "");
-                            newPost.getPostRows().get(newPost.getPostRows().size()-1)[3] = newPost.getAuthor();
-                            newPost.getPostRows().get(newPost.getPostRows().size()-1)[4] = newPost.getOrderNr();
+						// String name = message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong").get(i).text().trim();
+						String name = n.trim();
+						//message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote:has(div)").get(i).html("<strong>"+ name +"</strong>{quote_text}<div>"+text+"</div>{/quote_text}");
+						message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote").get(i).html("<strong>" + name + "</strong>{quote_text}<div>" + text + "</div>{/quote_text}");
+					} else {
+						//String text = message.select("div.post-quote-holder table.p2-4 tbody tr > td.alt2.post-quote:not(:has(div))").get(0).text().trim();
+						String text = quotetext.trim();
+						try {
+							// https://www.flashback.org/t2267536p44
+							message.select("div.post-quote-holder table.p2-4 tbody tr > td.alt2.post-quote").get(i).html("{anon_quote}{/anon_quote}{quote_text}<div>" + text + "</div>{/quote_text}");
+						} catch (Exception e) {
+							e.printStackTrace();
 						}
 
 					}
 				}
-			});
+				// Replace stuff in codetags
+				for (Element element : message.select("pre.alt2.post-bbcode-code")) {
+					element.text(element.text().replace(" ", "[SPACE]"));
+					element.text(element.text().replace("&nbsp;", "[SPACE]"));
+					element.text(element.text().replaceAll("\\t", "[SPACE][SPACE][SPACE][SPACE]"));
+					element.text(element.text().replaceAll("\\r", "[newline]"));
+				}
 
+				// Surround name of the quotee [newline]
+				message.select("div.post-quote-holder table.p2-4 tbody tr td.alt2.post-quote strong").before("{quoter_name}").after("{/quoter_name}");
+				//message);
+
+
+				String site = message.toString();
+				site = site.replaceAll("(?i)<br[^>]*> *", "[newline]");
+				site = site.replace("&nbsp;", "[SPACE]");
+				Element elem = Jsoup.parse(site);
+
+				site = elem.text().replace("<", "&lt;").replace(">", "&gt;");
+
+				Document doc = Jsoup.parseBodyFragment(site);
+
+				site = doc.outerHtml();
+
+				site = site.replace("{anon_quote}", "<anon_quote>").replace("{/anon_quote}", "</anon_quote>");
+				site = site.replace("{quoter_name}", "<quoter_name>").replace("{/quoter_name}", "</quoter_name>");
+				site = site.replace("{quote}", "<quote>").replace("{/quote}", "</quote>");
+				site = site.replace("{quote_text}", "<quote_text>").replace("{/quote_text}", "</quote_text>");
+				site = site.replace("{spoilertext}", "<spoiler>").replace("{/spoilertext}", "</spoiler>");
+				site = site.replace("{quotespoilertext}", "<quotespoiler>").replace("{/quotespoilertext}", "</quotespoiler>");
+				site = site.replace("{phptag}", "<phptag>").replace("{/phptag}", "</phptag>");
+				site = site.replace("{codetag}", "<codetag>").replace("{/codetag}", "</codetag>");
+				//site = site.replace("[newline]", "\n");
+
+				doc = Jsoup.parseBodyFragment(site);
+				// Temporarily remove code- and php-tags
+				//doc.select("codetag").remove();
+				//doc.select("phptag").remove();
+
+				final ArrayList<String[]> postarr = new ArrayList<String[]>();
+				final boolean[] quoteOpen = new boolean[]{false};
+				final boolean[] messageOpen = new boolean[]{false};
+				final boolean[] spoilerOpen = new boolean[]{false};
+				final boolean[] quotespoilerOpen = new boolean[]{false};
+				final boolean[] quoteHeaderOpen = new boolean[]{false};
+				final boolean[] phptagOpen = new boolean[]{false};
+				final boolean[] anonQuoteHeaderOpen = new boolean[]{false};
+
+				Elements body = doc.select("body");
+
+				body.traverse(new NodeVisitor() {
+
+					@Override
+					public void head(Node node, int level) {
+						if (node instanceof TextNode && node.toString().length() != 1) {
+
+							if (newPost.getPostRows().get(newPost.getPostRows().size() - 1)[0].equals("[QUOTEHEADER]") && quoteOpen[0] == true && quoteHeaderOpen[0] == true) {
+								String quoteheader = ((TextNode) node).text();
+								quoteheader = quoteheader.replace("<", "&lt;");
+								quoteheader = quoteheader.replace(">", "&gt;");
+								quoteheader = Jsoup.parse(quoteheader).text();
+								quoteheader = quoteheader.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+								quoteheader = quoteheader.replace("&lt;", "<");
+								quoteheader = quoteheader.replace("&gt;", ">");
+								quoteheader = quoteheader.replace("[SPACE]", " ");
+								newPost.getPostRows().get(newPost.getPostRows().size() - 1)[1] = quoteheader.trim();
+
+							}
+							if (quoteOpen[0] == true && quotespoilerOpen[0] == false && quoteHeaderOpen[0] == false && anonQuoteHeaderOpen[0] == false) {
+								String quotemsg = ((TextNode) node).text();
+								quotemsg = quotemsg.replace("<", "&lt;");
+								quotemsg = quotemsg.replace(">", "&gt;");
+								quotemsg = Jsoup.parse(quotemsg).text();
+								quotemsg = quotemsg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+								quotemsg = quotemsg.replace("&lt;", "<");
+								quotemsg = quotemsg.replace("&gt;", ">");
+								quotemsg = quotemsg.replace("[SPACE]", " ");
+								newPost.addRow("[QUOTEMESSAGE]", quotemsg.trim());
+							}
+
+							if (quoteOpen[0] == true && quotespoilerOpen[0] == true) {
+								if (newPost.getPostRows().get(newPost.getPostRows().size() - 1)[0].equals("[QUOTESPOILER]")) {
+									String quotespoilertext = ((TextNode) node).text();
+									quotespoilertext = quotespoilertext.replace("<", "&lt;");
+									quotespoilertext = quotespoilertext.replace(">", "&gt;");
+									quotespoilertext = Jsoup.parse(quotespoilertext).text();
+									quotespoilertext = quotespoilertext.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+									quotespoilertext = quotespoilertext.replace("&lt;", "<");
+									quotespoilertext = quotespoilertext.replace("&gt;", ">");
+									quotespoilertext = quotespoilertext.replace("[SPACE]", " ");
+									newPost.getPostRows().get(newPost.getPostRows().size() - 1)[1] = quotespoilertext.trim();
+								}
+							}
+							if (quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == true) {
+								if (newPost.getPostRows().get(newPost.getPostRows().size() - 1)[0].equals("[SPOILER]")) {
+									String spoilertext = ((TextNode) node).text();
+									spoilertext = spoilertext.replace("<", "&lt;");
+									spoilertext = spoilertext.replace(">", "&gt;");
+									spoilertext = Jsoup.parse(spoilertext).text();
+									spoilertext = spoilertext.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+									spoilertext = spoilertext.replace("&lt;", "<");
+									spoilertext = spoilertext.replace("&gt;", ">");
+									spoilertext = spoilertext.replace("[SPACE]", " ");
+									newPost.getPostRows().get(newPost.getPostRows().size() - 1)[1] = spoilertext.trim();
+								}
+							}
+							if (quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == false && phptagOpen[0] == false) {
+								String msg = ((TextNode) node).text();
+								msg = msg.replace("<", "&lt;");
+								msg = msg.replace(">", "&gt;");
+								msg = Jsoup.parse(msg).text();
+								msg = msg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+								msg = msg.replace("&lt;", "<");
+								msg = msg.replace("&gt;", ">");
+								msg = msg.replace("[SPACE]", " ");
+								newPost.addRow("[MESSAGE]", msg.trim());
+							}
+							if (quoteOpen[0] == false && quotespoilerOpen[0] == false && spoilerOpen[0] == false && phptagOpen[0] == true) {
+								String msg = ((TextNode) node).text();
+								msg = msg.replace("<", "&lt;");
+								msg = msg.replace(">", "&gt;");
+								msg = Jsoup.parse(msg).text();
+								msg = msg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+								msg = msg.replace("&lt;", "<");
+								msg = msg.replace("&gt;", ">");
+								msg = msg.replace("[SPACE]", " ");
+								newPost.addRow("[PHPTAGMESSAGE]", msg.trim());
+							}
+						}
+
+						if (node instanceof Element) {
+							if (node.nodeName().equals("body")) {
+								newPost.addRow("[POSTHEADER]", "");
+							}
+							if (node.nodeName().equals("quotespoiler")) {
+								newPost.addRow("[QUOTESPOILER]", "");
+								quotespoilerOpen[0] = true;
+							}
+							if (node.nodeName().equals("quote")) {
+								quoteOpen[0] = true;
+							}
+							if (node.nodeName().equals("quoter_name")) {
+								newPost.addRow("[QUOTEHEADER]", "");
+								//quoteOpen[0] = true;
+								quoteHeaderOpen[0] = true;
+							}
+							if (node.nodeName().equals("anon_quote")) {
+								newPost.addRow("[ANONQUOTEHEADER]", "");
+								anonQuoteHeaderOpen[0] = true;
+							}
+							if (node.nodeName().equals("spoiler")) {
+								newPost.addRow("[SPOILER]", "");
+								spoilerOpen[0] = true;
+							}
+							if (node.nodeName().equals("phptag")) {
+								newPost.addRow("[PHPTAGHEADER]", "");
+								phptagOpen[0] = true;
+							}
+						}
+					}
+
+					@Override
+					public void tail(Node node, int level) {
+						if (node instanceof Element) {
+							if (node.nodeName().equals("quote_text")) {
+								newPost.addRow("[QUOTEFOOTER]", "");
+								quoteOpen[0] = false;
+							}
+							if (node.nodeName().equals("quotespoiler")) {
+								quotespoilerOpen[0] = false;
+							}
+							if (node.nodeName().equals("quoter_name")) {
+								quoteHeaderOpen[0] = false;
+							}
+							if (node.nodeName().equals("spoiler")) {
+								spoilerOpen[0] = false;
+							}
+							if (node.nodeName().equals("phptag")) {
+								newPost.addRow("[PHPTAGFOOTER]", "");
+								phptagOpen[0] = false;
+							}
+							if (node.nodeName().equals("anon_quote")) {
+								anonQuoteHeaderOpen[0] = false;
+							}
+							if (node.nodeName().equals("body")) {
+								newPost.addRow("[POSTFOOTER]", "");
+								newPost.getPostRows().get(newPost.getPostRows().size() - 1)[3] = newPost.getAuthor();
+								newPost.getPostRows().get(newPost.getPostRows().size() - 1)[4] = newPost.getOrderNr();
+							}
+
+						}
+					}
+				});
+			}
             postArrayList.add(newPost);
 		}
 
@@ -1129,9 +1169,9 @@ public class Parser {
 			name = e.select("td.alt1.td_title a[id^=thread_title]").text();
 			link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
 			author = e.select("div.smallfont.thread-poster span").text();
-			views = e.select("td:nth-child(4)").text();
-			numReplies = e.select("td:nth-child(5)").text();
-			pages = e.select("td.alt1.td_title a.thread-pagenav-lastpage").text();
+			views = e.select("td:nth-child(5)").text();
+			numReplies = e.select("td:nth-child(4)").text();
+			pages = e.select("a.thread-pagenav-lastpage").text();
 			lastPost = e.select("td.alt2.td_last_post").text();
 
 			if(e.select("td.alt1.td_status a.clear.icon-thread-lock").isEmpty()) {
@@ -1330,9 +1370,26 @@ public class Parser {
 
 		for(Element thread : threads) {
 			String startuser = thread.select("div.smallfont.thread-poster").text();
-			String threadTitle = thread.select("td.alt1.td_title div a[id^=thread_title]").text();
+			String threadTitle = "";
+			String isBold = "";
+			threadTitle = thread.select("td.alt1.td_title div strong a[id^=thread_title]").text();
+			if(threadTitle.isEmpty()) {
+				// Not bold text
+				threadTitle = thread.select("td.alt1.td_title div a[id^=thread_title]").text();
+				isBold = "false";
+			} else {
+				isBold = "true";
+			}
 			String threadLink = thread.select("td.alt1.td_title div a[id^=thread_title]").attr("abs:href");
 			String lastPost = thread.select("td.alt2.td_last_post").text();
+			String checkbox = thread.select("td input").attr("name");
+			String lastPage;
+
+			try {
+				lastPage = thread.select("a.thread-pagenav-lastpage").attr("href").split("p")[1];
+			} catch (ArrayIndexOutOfBoundsException e) {
+				lastPage = "1";
+			}
 
 			String monitoring = thread.select("td.alt1.smallfont.alignc").text();
 
@@ -1341,6 +1398,10 @@ public class Parser {
 			threadMap.put("Title", threadTitle);
 			threadMap.put("Link", threadLink);
 			threadMap.put("LastPost", lastPost);
+			threadMap.put("LastPage", lastPage);
+			threadMap.put("Checkbox", checkbox);
+			threadMap.put("Checked", "0");
+			threadMap.put("BoldTitle", isBold);
 			threadMap.put("Monitoring", monitoring);
 			progressupdate.onTaskComplete(threadMap);
 		}
@@ -1350,6 +1411,54 @@ public class Parser {
 
 	public ArrayList<Post> getPrivateMessageContent(String url) {
 		return getThreadContent(url);
+	}
+
+	public String getNewPrivateMessageToken() {
+		String token = "";
+		if(LoginHandler.loggedIn(mContext)) {
+			try {
+				Connect("https://www.flashback.org/private.php?do=newpm");
+			} catch (NullPointerException e) {
+				e.printStackTrace();
+				showErrorMsg(e.getMessage());
+				return "";
+			} catch (IOException e) {
+				e.printStackTrace();
+				showErrorMsg(e.getMessage());
+				return "";
+			}
+
+			token = currentSite.select("input[name=stoken]").attr("value");
+		}
+		return token;
+
+	}
+
+	public HashMap<String, String> getEditPostContent(String url) {
+		HashMap<String, String> fields = new HashMap<String, String>();
+
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return fields;
+		} catch (IOException e) {
+			e.printStackTrace();
+			showErrorMsg(e.getMessage());
+			return fields;
+		}
+
+		String reason = currentSite.select("input[name=reason]").attr("value");
+		String title = currentSite.select("input[name=title]").attr("value");
+		String message = currentSite.select("textarea[name=message]").text();
+
+		fields.put("Reason", reason);
+		fields.put("Title", title);
+		fields.put("Message", message);
+
+
+		return fields;
 	}
 
 }

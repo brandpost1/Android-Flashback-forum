@@ -1,26 +1,20 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
-import android.app.NotificationManager;
-import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager;
 
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.fragments.ShowCategoriesFragment;
 
 /**
  * Created by Viktor on 2014-01-21.

@@ -83,24 +83,6 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 		activity = this;
 	}
 
-
-	public void reportPost(View v) {
-		Toast.makeText(this, "Report post", Toast.LENGTH_SHORT).show();
-	}
-
-	public void normalquote(View v) {
-		Toast.makeText(this, (String)v.getTag(R.id.QUOTE_MESSAGE_TAG) + ", " + (String)v.getTag(R.id.QUOTE_AUTHOR_TAG), Toast.LENGTH_SHORT).show();
-	}
-
-	public void plusquote(View v) {
-		Toast.makeText(this, "Plusquote", Toast.LENGTH_SHORT).show();
-	}
-
-	public void openThreadLastPage(MenuItem item) {
-
-		Toast.makeText(this, "Open last page", Toast.LENGTH_SHORT).show();
-	}
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		return super.onCreateOptionsMenu(menu);
@@ -643,7 +625,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 	public void onOptionSelected(int itemId, Bundle args) {
 		switch (itemId) {
 			case R.id.thread_new_reply:
-				PostReplyFragment fragment = new PostReplyFragment();
+				PostReplyFragment fragment = new PostReplyFragment(this);
 				fragment.setArguments(args);
 				try {
 					getSupportFragmentManager().beginTransaction()

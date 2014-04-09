@@ -72,7 +72,7 @@ public class MainPager extends Fragment {
 
         @Override
         protected void onPreExecute() {
-            dialog.setMessage("Ett ögonblick bara..");
+            dialog.setMessage("Laddar..");
             if(!fixedNumPages)
                 dialog.show();
             super.onPreExecute();
@@ -81,7 +81,11 @@ public class MainPager extends Fragment {
         @Override
         protected void onPostExecute(Integer[] result) {
             if(dialog.isShowing()) {
-                dialog.dismiss();
+				try {
+					dialog.dismiss();
+				} catch (Exception e) {
+
+				}
             }
             mCallback.onTaskComplete(result);
         }
@@ -148,12 +152,17 @@ public class MainPager extends Fragment {
                     mPagerBundle.putInt("NumPages", data[0]);
 					if(mPagerBundle.getInt("FragmentType") == 3)
 						mPagerBundle.putInt("ThreadId", data[1]);
-					// if opening a thread and pageNumber equals -1, then we don't know the pagenumber beforehand.
+					// if opening a thread and pageNumber equals -1, then we don't know the pagenumber beforehand. Ex. https://www.flashback.org/p48110027
 					if(mPagerBundle.getInt("Position") == -1 && mPagerBundle.getInt("FragmentType") == 3) {
 						pageNumber = data[2];
 						mPagerBundle.putInt("Position", data[2]);
 						String newUrl = "https://www.flashback.org/t" + data[1];
 						mPagerBundle.putString("Url", newUrl);
+					}
+					// Set the current page to be the last page in the thread if this is the case. Just call openThread with -2 as position.
+					if(mPagerBundle.getInt("Position") == -2 && mPagerBundle.getInt("FragmentType") == 3) {
+						pageNumber = data[0];
+						mPagerBundle.putInt("Position", data[0]);
 					}
                     mPagerAdapter.setData(mPagerBundle);
                     mPagerAdapter.notifyDataSetChanged();

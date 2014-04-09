@@ -8,8 +8,10 @@ import android.support.v4.app.ListFragment;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -151,12 +153,6 @@ public class UserThreadsFragment extends ListFragment {
         return view;
     }
 
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
-		registerForContextMenu(getListView());
-	}
-
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         super.onListItemClick(l, v, position, id);
@@ -168,11 +164,4 @@ public class UserThreadsFragment extends ListFragment {
 			e.printStackTrace();
 		}
     }
-
-	@Override
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-		MenuInflater inflater = mActivity.getMenuInflater();
-		inflater.inflate(R.menu.thread_context, menu);
-	}
 }

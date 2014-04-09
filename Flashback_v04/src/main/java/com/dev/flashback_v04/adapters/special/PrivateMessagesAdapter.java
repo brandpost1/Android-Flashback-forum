@@ -1,7 +1,6 @@
 package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
-import android.os.Message;
 import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;

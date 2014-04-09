@@ -11,7 +11,6 @@ import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 

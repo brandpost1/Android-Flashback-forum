@@ -9,14 +9,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
-import com.dev.flashback_v04.asynctasks.special.PostReplyTask;
-
-import java.io.ObjectInputStream;
-import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-11-20.

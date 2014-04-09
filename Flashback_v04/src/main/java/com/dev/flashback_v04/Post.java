@@ -11,8 +11,6 @@ import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.fragments.SecondaryPager;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Created by Viktor on 2013-06-19.
@@ -36,6 +34,7 @@ public class Post {
 	PopupMenu mPopup;
 	boolean popupInit = false;
     String postUrl;
+	private String editUrl;
 
 	public Post() {
 		postRows = new ArrayList<String[]>();
@@ -77,7 +76,9 @@ public class Post {
 				Bundle bundle;
 				switch (item) {
 					case 1:
-
+						Bundle pmBundle = new Bundle();
+						pmBundle.putString("Recipient", author);
+						((MainActivity)context).onOptionSelected(R.id.new_private_message, pmBundle);
 						break;
 					case 2:
 						SecondaryPager userThreadsPager = new SecondaryPager();
@@ -134,7 +135,8 @@ public class Post {
 		};
 
 		mPopup.setOnMenuItemClickListener(clickListener);
-		mPopup.getMenu().add(Menu.NONE, 1, Menu.NONE, "Skicka PM").setEnabled(false);
+		mPopup.getMenu().add(Menu.NONE, 1, Menu.NONE, "Skicka PM");
+		mPopup.getMenu().add(Menu.NONE, 5, Menu.NONE, "Anteckningar").setEnabled(false);
 		mPopup.getMenu().add(Menu.NONE, 2, Menu.NONE, "Hitta alla ämnen");
 		mPopup.getMenu().add(Menu.NONE, 3, Menu.NONE, "Hitta alla inlägg");
 		mPopup.getMenu().add(Menu.NONE, 4, Menu.NONE, "Hitta alla inlägg i detta ämne");
@@ -222,5 +224,15 @@ public class Post {
 
 	public void setThreadId(String threadId) {
 		threadID = threadId;
+	}
+
+	public void setEditUrl(String editUrl) {
+		this.editUrl = editUrl;
+	}
+	public String getEditUrl() {
+		return editUrl;
+	}
+	public String getThreadId() {
+		return threadID;
 	}
 }

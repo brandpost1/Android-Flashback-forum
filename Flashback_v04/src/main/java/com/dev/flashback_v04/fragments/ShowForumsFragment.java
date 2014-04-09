@@ -8,14 +8,13 @@ import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
 
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
 
 
+import com.dev.flashback_v04.NewParser;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 
@@ -66,7 +65,9 @@ public class ShowForumsFragment extends ListFragment {
         protected Boolean doInBackground(String... strings) {
             try {
                 // Url, Callback
-                mParser.getCategoryContent(strings[0], mProgressUpdate);
+                //mParser.getCategoryContent(strings[0], mProgressUpdate);
+				NewParser parser = new NewParser(mContext);
+				parser.getForums(strings[0], mProgressUpdate);
             } catch (Exception e) {
                 e.printStackTrace();
             }

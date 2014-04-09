@@ -2,6 +2,7 @@ package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.text.InputType;
 import android.text.Spannable;
 import android.view.LayoutInflater;
@@ -14,8 +15,6 @@ import android.widget.TextView;
 import com.dev.flashback_v04.ImageAdder;
 import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
-import com.dev.flashback_v04.activities.MainActivity;
-import com.google.android.gms.plus.model.people.Person;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -60,7 +59,7 @@ public class ViewPMAdapter extends BaseAdapter {
 
 	@Override
 	public Object getItem(int i) {
-		return null;
+		return mMessage;
 	}
 
 	@Override
@@ -190,6 +189,12 @@ public class ViewPMAdapter extends BaseAdapter {
 		switch(type) {
 			case POST_HEADER:
 				author = (TextView)view.findViewById(R.id.user_name);
+
+				// Set selectable if API > 11.
+				//TODO: Fix for < 11
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+					author.setTextIsSelectable(true);
+
 				usertype = (TextView)view.findViewById(R.id.user_status);
 				postnr = (TextView)view.findViewById(R.id.post_nr);
 				date = (TextView)view.findViewById(R.id.post_date);
@@ -242,11 +247,17 @@ public class ViewPMAdapter extends BaseAdapter {
 				break;
 			case POST_MESSAGE:
 				message = (TextView)view.findViewById(R.id.post_text);
-				message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+				//message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
 				if(mMessageRows.get(position)[1] != null) {
 					Spannable smileymessage = ImageAdder.getSmiledText(mContext, mMessageRows.get(position)[1]);
 					message.setText(smileymessage);
-					message.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						message.setTextIsSelectable(true);
+
+					//message.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					message.setSingleLine(false);
 				}
 				break;
@@ -259,7 +270,13 @@ public class ViewPMAdapter extends BaseAdapter {
 					String text = (String)spoiler.getTag(R.id.SPOILER_MESSAGE);
 					Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
 					spoiler.setText(smileyspoiler);
-					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						spoiler.setTextIsSelectable(true);
+
+					//spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);
 				}
 				spoiler.setOnClickListener(new View.OnClickListener() {
@@ -299,7 +316,13 @@ public class ViewPMAdapter extends BaseAdapter {
 				if(mMessageRows.get(position)[1] != null) {
 					Spannable smileymessage = ImageAdder.getSmiledText(mContext, mMessageRows.get(position)[1]);
 					quote.setText(smileymessage);
-					quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						quote.setTextIsSelectable(true);
+
+					//quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					quote.setSingleLine(false);
 				}
 				break;
@@ -312,6 +335,11 @@ public class ViewPMAdapter extends BaseAdapter {
 					String text = (String)spoiler.getTag(R.id.QUOTE_SPOILER_MESSAGE);
 					Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
 					spoiler.setText(smileyspoiler);
+
+					// Set selectable if API > 11.
+					//TODO: Fix for < 11
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+						spoiler.setTextIsSelectable(true);
 
 					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);

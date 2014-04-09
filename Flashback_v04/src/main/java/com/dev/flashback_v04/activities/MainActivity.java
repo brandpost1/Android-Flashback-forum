@@ -1,6 +1,8 @@
 package com.dev.flashback_v04.activities;
 
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -8,6 +10,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.http.HttpResponseCache;
+import android.os.Build;
 import android.os.Bundle;
 
 import android.preference.PreferenceManager;
@@ -16,6 +20,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -30,10 +35,15 @@ import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.adapters.DrawerAdapter;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
 import com.dev.flashback_v04.asynctasks.LoginTask;
+import com.dev.flashback_v04.asynctasks.special.DeleteSubsTask;
+import com.dev.flashback_v04.asynctasks.special.PutEditedPostTask;
+import com.dev.flashback_v04.asynctasks.special.SendPMTask;
 import com.dev.flashback_v04.fragments.MainPager;
 import com.dev.flashback_v04.fragments.SecondaryPager;
 import com.dev.flashback_v04.fragments.special.CreateThreadFragment;
 import com.dev.flashback_v04.fragments.special.CurrentThreadsFragment;
+import com.dev.flashback_v04.fragments.special.EditPostFragment;
+import com.dev.flashback_v04.fragments.special.NewPMFragment;
 import com.dev.flashback_v04.fragments.special.NewPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewThreadsFragment;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
@@ -46,6 +56,10 @@ import com.dev.flashback_v04.interfaces.UpdateStuff;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
+import org.apache.http.protocol.HTTP;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 
@@ -83,20 +97,13 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         activity = this;
 	}
 
-
-    public void reportPost(View v) {
-        Toast.makeText(this, "Report post", Toast.LENGTH_SHORT).show();
-    }
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		return super.onCreateOptionsMenu(menu);
 	}
 
-	public void openPrivateMessage(String url) {
+	public void openPrivateMessage(Bundle args) {
 		ViewPMFragment fragment = new ViewPMFragment();
-		Bundle args = new Bundle();
-		args.putString("Link", url);
 		fragment.setArguments(args);
 		try {
 			fragmentManager.beginTransaction()
@@ -289,8 +296,30 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
     }
 
-    @Override
+	@Override
+	protected void onStop() {
+		super.onStop();
+
+		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+			HttpResponseCache cache = HttpResponseCache.getInstalled();
+			if (cache != null) {
+				cache.flush();
+			}
+		}
+	}
+
+	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+
+		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+			try {
+				File httpCacheDir = new File(this.getCacheDir(), "http");
+				long httpCacheSize = 10 * 1024 * 1024;
+				HttpResponseCache.install(httpCacheDir, httpCacheSize);
+			} catch (IOException e) {
+				System.out.println("FLASHBACK - HTTP response cache installation failed:");
+			}
+		}
 
 		if(Constants.type == Constants.Type.FREE) {
 			ADS_ACTIVATED = true;
@@ -325,8 +354,10 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         adView = (AdView)this.findViewById(R.id.bannerAdvert);
         if(ADS_ACTIVATED) {
             String testDevice = this.getResources().getString(R.string.test_device);
+            String testDeviceEmu = this.getResources().getString(R.string.test_device_emu);
             AdRequest request = new AdRequest.Builder()
                     .addTestDevice(testDevice)
+					.addTestDevice(testDeviceEmu)
                     .build();
             adView.loadAd(request);
         } else {
@@ -708,7 +739,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
     public void onOptionSelected(int itemId, Bundle args) {
         switch (itemId) {
             case R.id.thread_new_reply:
-                PostReplyFragment fragment = new PostReplyFragment();
+                PostReplyFragment fragment = new PostReplyFragment(this);
                 fragment.setArguments(args);
                 try {
                     getSupportFragmentManager().beginTransaction()
@@ -731,6 +762,18 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                     e.printStackTrace();
                 }
                 break;
+			case R.id.new_private_message:
+				NewPMFragment newPMFragment = new NewPMFragment();
+				newPMFragment.setArguments(args);
+				try {
+					fragmentManager.beginTransaction()
+							.addToBackStack("NewPrivateMessage")
+							.replace(R.id.fragmentcontainer, newPMFragment)
+							.commit();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				break;
             case R.id.gotolastpage:
                 openThread(args.getString("Url"), args.getInt("LastPage"), args.getString("ThreadName"));
                 break;
@@ -749,18 +792,18 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
     // Bundle should include:
     // Url, number of pages, and current page
     @Override
-    public void updateThread(final Bundle o) {
+    public void updateThread(final Bundle bundle) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 // Pops back to the "Thread-view" of the current forum
                 getSupportFragmentManager().popBackStack("Threads", FragmentManager.POP_BACK_STACK_INCLUSIVE);
                 // Retrieve bundle info
-                String url = o.getString("Url");
-                int position = o.getInt("CurrentPage");
-                String threadname = o.getString("ThreadName");
+                String url = bundle.getString("Url");
+                int position = bundle.getInt("CurrentPage");
+                String threadname = bundle.getString("ThreadName");
                 // Reload thread
-                openThread(url ,position+1, threadname);
+                openThread(url ,position, threadname);
             }
         });
     }
@@ -771,7 +814,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
             @Override
             public void run() {
                 // Pop back two steps
-                FragmentManager f = getSupportFragmentManager();
                 getSupportFragmentManager().popBackStack("Forums", FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
                 // Retrieve stuff in bundle
@@ -788,4 +830,74 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
     public void refreshDrawer() {
         mDrawerList.setAdapter(new DrawerAdapter(this));
     }
+
+	public void sendPrivateMessage(Bundle bundle) {
+		// Pop back stack
+		getSupportFragmentManager().popBackStack();
+
+		SendPMTask sendPMTask = new SendPMTask(this, bundle);
+
+		try {
+			sendPMTask.execute();
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void deleteSubscription(Bundle bundle) {
+		// Pop back stack
+		getSupportFragmentManager().popBackStack();
+
+		// Remove selected subs
+		DeleteSubsTask deleteSubsTask = new DeleteSubsTask(activity, bundle);
+		try {
+			deleteSubsTask.execute();
+		} catch (Exception e) {
+			Toast.makeText(activity, "Kunde inte avsluta..", Toast.LENGTH_SHORT).show();
+			e.printStackTrace();
+		}
+
+
+		// Reopen
+		SecondaryPager mySubscriptionsPager = new SecondaryPager();
+		Bundle mySubsBundle = new Bundle();
+		mySubsBundle.putInt("FragmentType", 3);
+		mySubscriptionsPager.setArguments(mySubsBundle);
+
+		try {
+			fragmentManager.beginTransaction()
+					.addToBackStack("MySubscriptions")
+					.replace(R.id.fragmentcontainer, mySubscriptionsPager)
+					.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public void editPost(Bundle bundle) {
+		EditPostFragment editPostFragment = new EditPostFragment();
+		editPostFragment.setArguments(bundle);
+		try {
+			fragmentManager.beginTransaction()
+					.addToBackStack("EditPost")
+					.replace(R.id.fragmentcontainer, editPostFragment)
+					.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void putEditedPost(Bundle bundle) {
+		// Pop back stack
+		getSupportFragmentManager().popBackStack();
+
+		PutEditedPostTask putEditedPostTask = new PutEditedPostTask(activity);
+		try {
+			putEditedPostTask.execute(bundle);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
 }

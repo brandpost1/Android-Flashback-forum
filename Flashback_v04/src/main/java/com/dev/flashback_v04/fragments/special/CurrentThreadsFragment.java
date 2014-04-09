@@ -23,7 +23,6 @@ import com.dev.flashback_v04.activities.MainActivity;
 
 import com.dev.flashback_v04.adapters.special.CurrentThreadsAdapter;
 import com.dev.flashback_v04.interfaces.Callback;
-import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -123,8 +122,6 @@ public class CurrentThreadsFragment extends ListFragment {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        registerForContextMenu(getListView());
-
     }
 
     @Override
@@ -134,89 +131,13 @@ public class CurrentThreadsFragment extends ListFragment {
     }
 
     @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        MenuInflater inflater = getActivity().getMenuInflater();
-        inflater.inflate(R.menu.thread_context, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-        switch (item.getItemId()) {
-            case R.id.gotolastpage:
-                int position = info.position;
-                SharedPreferences sessionPrefs;
-                int posts_per_page;
-                String total_thread_posts;
-                int replies;
-                int lastPage;
-                String threadname;
-                String url;
-
-                try {
-                    // Other way to get number of pages in thread.
-                    sessionPrefs = (getActivity()).getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
-                    posts_per_page = sessionPrefs.getInt("Thread_Max_Posts_Page", 12);
-                    total_thread_posts = ((HashMap<String, String>)mAdapter.getItem(position)).get("Replies");
-                    String temp = "";
-
-                    // Stupid strings with format such as "2 345". Spaces need to be removed. replaceAll() did not work.
-                    total_thread_posts = total_thread_posts.replace("\u00A0","");
-
-                    replies = Integer.parseInt(total_thread_posts);
-
-                    lastPage = (int) Math.ceil(replies / posts_per_page) + 1;
-
-
-                    threadname = ((HashMap<String, String>)mAdapter.getItem(position)).get("Headline");
-                    url = ((HashMap<String, String>)mAdapter.getItem(position)).get("Link");
-
-                    Bundle args = new Bundle();
-                    args.putInt("LastPage", lastPage);
-                    args.putString("Url", url);
-                    args.putString("ThreadName", threadname);
-
-                    ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
-
-                } catch (NullPointerException e) {
-                    e.printStackTrace();
-                } catch (IndexOutOfBoundsException e) {
-                    e.printStackTrace();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-                return true;
-            default:
-                return super.onContextItemSelected(item);
-        }
-    }
-
-    @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
-        SharedPreferences sessionPrefs;
-        int posts_per_page;
-        String total_thread_posts;
-        int replies;
-        int numpages;
         String threadname;
         String url;
 
         try {
-
-            sessionPrefs = (getActivity()).getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
-            posts_per_page = sessionPrefs.getInt("Thread_Max_Posts_Page", 12);
-            total_thread_posts = ((HashMap<String, String>)mAdapter.getItem(position)).get("Replies");
-
-            total_thread_posts = total_thread_posts.replace("\u00A0","");
-
-            replies = Integer.parseInt(total_thread_posts.replace(" ", "").toString());
             threadname = ((HashMap<String, String>)mAdapter.getItem(position)).get("Headline");
-
-            numpages = (int) Math.ceil(replies / posts_per_page) + 1;
             url = ((HashMap<String, String>)mAdapter.getItem(position)).get("Link");
-
             ((MainActivity)getActivity()).openThread(url, 0, threadname);
         } catch (NullPointerException e) {
             e.printStackTrace();

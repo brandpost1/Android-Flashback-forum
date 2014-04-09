@@ -68,7 +68,7 @@ public class SecondaryPager extends Fragment {
 
         @Override
         protected void onPreExecute() {
-            dialog.setMessage("Ett ögonblick bara..");
+            dialog.setMessage("Laddar..");
             dialog.show();
             super.onPreExecute();
         }

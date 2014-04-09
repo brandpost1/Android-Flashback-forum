@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
 import android.support.v4.view.MenuItemCompat;
-import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.SearchView;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -26,7 +25,6 @@ import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.NumberPicker;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,6 +32,7 @@ import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
+import com.dev.flashback_v04.asynctasks.special.AddSubsTask;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
 
 import android.support.v7.widget.ShareActionProvider;
@@ -148,16 +147,36 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 	public boolean onOptionsItemSelected(MenuItem item) {
 
         switch (item.getItemId()) {
+			case R.id.thread_subscribe:
+
+				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+				builder.setTitle("Prenumeration")
+						.setMessage("Vill du prenumerera på den här tråden?")
+						.setPositiveButton("Bekräfta", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int id) {
+								Bundle bundle = new Bundle();
+								bundle.putString("ThreadId", String.valueOf(getArguments().getInt("ThreadId")));
+								AddSubsTask addSubsTask = new AddSubsTask(mActivity, bundle);
+								addSubsTask.execute();
+							}
+						})
+						.setNegativeButton("Avbryt", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int id) {
+							}
+						});
+				builder.create().show();
+
+				break;
             case R.id.thread_new_reply:
                 Bundle args = new Bundle();
                 args.putString("Url", thread_url);
-                args.putInt("CurrentPage", selected_page_base);
+                args.putInt("CurrentPage", selected_page);
                 args.putString("ThreadName", getArguments().getString("ThreadName"));
                 ((MainActivity)mActivity).onOptionSelected(item.getItemId(), args);
                 break;
              case R.id.thread_update:
                 Bundle updatebundle = new Bundle();
-                updatebundle.putInt("CurrentPage", selected_page_base);
+                updatebundle.putInt("CurrentPage", selected_page);
                 updatebundle.putString("Url", thread_url);
                 updatebundle.putString("ThreadName", getArguments().getString("ThreadName"));
                 ((MainActivity)mActivity).updateThread(updatebundle);
@@ -197,7 +216,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                 } else {
                     final EditText pick = (EditText)v.findViewById(R.id.edittext_picker);
                     TextView right = (TextView)v.findViewById(R.id.picker_right);
-                    right.setText(numPages);
+                    right.setText(String.valueOf(numPages));
                     AlertDialog pagepicker = new AlertDialog.Builder(mActivity)
                             .setTitle("Välj sida")
                             .setView(v)
@@ -215,7 +234,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                                     if(page > 0 && page <= numPages) {
                                         // In range
                                         Bundle gotobundle = new Bundle();
-                                        gotobundle.putInt("CurrentPage", page-1);
+                                        gotobundle.putInt("CurrentPage", page);
                                         gotobundle.putString("Url", thread_url);
                                         gotobundle.putString("ThreadName", getArguments().getString("ThreadName"));
                                         ((MainActivity)mActivity).updateThread(gotobundle);
@@ -303,7 +322,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
     @Override
     public void sendQuote(Bundle b) {
         b.putString("Url", thread_url);
-        b.putInt("CurrentPage", selected_page_base);
+        b.putInt("CurrentPage", selected_page);
         b.putString("ThreadName", getArguments().getString("ThreadName"));
 
         ((MainActivity)mActivity).onOptionSelected(R.id.thread_new_reply, b);

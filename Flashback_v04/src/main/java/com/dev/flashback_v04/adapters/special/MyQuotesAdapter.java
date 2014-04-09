@@ -12,8 +12,6 @@ import com.dev.flashback_v04.R;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Created by Viktor on 2014-03-11.

@@ -1,13 +1,16 @@
 package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.*;
+import com.dev.flashback_v04.activities.MainActivity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,10 +23,13 @@ public class CurrentThreadsAdapter extends BaseAdapter {
     public static final int ITEM_ROW = 1;
     private final LayoutInflater mInflater;
     ArrayList<HashMap<String, String>> mItems;
+	private Context mContext;
 
     public CurrentThreadsAdapter(Context context) {
+		mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mItems = new ArrayList<HashMap<String, String>>();
+		System.out.println("Currentthreadsadapter: ");
     }
 
     @Override
@@ -74,6 +80,7 @@ public class CurrentThreadsAdapter extends BaseAdapter {
         TextView readers = null;
         TextView replies = null;
         TextView sourceForum = null;
+		ImageView openLastPage = null;
 
 
         int type = getItemViewType(i);
@@ -83,21 +90,9 @@ public class CurrentThreadsAdapter extends BaseAdapter {
             switch(type) {
                 case ITEM_HEADER:
                     view = mInflater.inflate(R.layout.thread_current_divider, null);
-                    header = (TextView)view.findViewById(R.id.divider_text);
-                    header.setText(mItems.get(i).get("Headline"));
                     break;
                 case ITEM_ROW:
                     view = mInflater.inflate(R.layout.thread_current_item, null);
-                    threadName = (TextView)view.findViewById(R.id.threadTitle);
-                    views = (TextView)view.findViewById(R.id.viewCount);
-                    replies = (TextView)view.findViewById(R.id.repliesCount);
-                    readers = (TextView)view.findViewById(R.id.readerCount);
-                    sourceForum = (TextView)view.findViewById(R.id.sourceForum);
-                    threadName.setText(mItems.get(i).get("Headline"));
-                    views.setText(mItems.get(i).get("Views"));
-                    replies.setText(mItems.get(i).get("Replies"));
-                    readers.setText(mItems.get(i).get("Readers"));
-                    sourceForum.setText(mItems.get(i).get("SourceForum"));
                     break;
             }
         }
@@ -112,6 +107,22 @@ public class CurrentThreadsAdapter extends BaseAdapter {
                 replies = (TextView)view.findViewById(R.id.repliesCount);
                 readers = (TextView)view.findViewById(R.id.readerCount);
                 sourceForum = (TextView)view.findViewById(R.id.sourceForum);
+				openLastPage = (ImageView)view.findViewById(R.id.current_gotolastpage);
+
+				final String threadname = ((HashMap<String, String>)getItem(i)).get("Headline");
+				final String url = ((HashMap<String, String>)getItem(i)).get("Link");
+
+				openLastPage.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						Bundle args = new Bundle();
+						args.putInt("LastPage", -2);
+						args.putString("Url", url);
+						args.putString("ThreadName", threadname);
+						((MainActivity)mContext).onOptionSelected(R.id.gotolastpage, args);
+					}
+				});
+
                 threadName.setText(mItems.get(i).get("Headline"));
                 views.setText(mItems.get(i).get("Views"));
                 replies.setText(mItems.get(i).get("Replies"));

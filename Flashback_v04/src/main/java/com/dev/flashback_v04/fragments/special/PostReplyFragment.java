@@ -1,6 +1,7 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -10,6 +11,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,11 +28,12 @@ public class PostReplyFragment extends Fragment {
 
     private String threadUrl = "";
     private int currentPage = 0;
-
+	private Context mContext;
     EditText messageArea;
 
-    public PostReplyFragment() {
 
+    public PostReplyFragment(Context context) {
+		mContext = context;
     }
 
     @Override
@@ -54,6 +57,10 @@ public class PostReplyFragment extends Fragment {
                 args.putString("Url", getArguments().getString("Url"));
                 args.putInt("CurrentPage", getArguments().getInt("CurrentPage"));
                 args.putString("ThreadName", getArguments().getString("ThreadName"));
+
+				// Close keyboard
+				InputMethodManager imm = (InputMethodManager)mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+				imm.hideSoftInputFromWindow(messageArea.getWindowToken(), 0);
 
                 PostReplyTask replyTask = new PostReplyTask(getActivity(), args);
 
