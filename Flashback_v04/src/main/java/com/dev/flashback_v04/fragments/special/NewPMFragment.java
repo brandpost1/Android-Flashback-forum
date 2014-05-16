@@ -1,11 +1,8 @@
 package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
@@ -17,18 +14,9 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import com.dev.flashback_v04.LoginHandler;
-import com.dev.flashback_v04.Parser;
-import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.asynctasks.special.NewThreadTask;
-import com.dev.flashback_v04.interfaces.Callback;
-
-import java.util.ArrayList;
 
 /**
  * Created by Viktor on 2014-02-27.
@@ -44,12 +32,6 @@ public class NewPMFragment extends Fragment {
 	CheckBox urlToLink;
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        setHasOptionsMenu(true);
-    }
-
-    @Override
     public void onAttach(Activity activity) {
         mActivity = (ActionBarActivity) activity;
         super.onAttach(activity);
@@ -58,6 +40,7 @@ public class NewPMFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+		setHasOptionsMenu(true);
     }
 
     @Override
@@ -85,8 +68,8 @@ public class NewPMFragment extends Fragment {
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.newpm_menu, menu);
         super.onCreateOptionsMenu(menu, inflater);
+		inflater.inflate(R.menu.newpm_menu, menu);
     }
 
     @Override

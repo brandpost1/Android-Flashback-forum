@@ -8,22 +8,22 @@ import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.SearchView;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowThreadsAdapter;
 import com.dev.flashback_v04.interfaces.Callback;
+import com.dev.flashback_v04.interfaces.ErrorHandler;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
 
 import java.util.ArrayList;
@@ -34,109 +34,101 @@ import java.util.HashMap;
  */
 public class ShowThreadsFragment extends ListFragment {
 
-    public class ForumsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+	public class ContentParserTask extends AsyncTask<String, Object, String> {
+
+		private final int TYPE_FORUM = 0;
+		private final int TYPE_THREAD = 1;
 
         Context mContext;
-        Callback mCallback;
-        Callback<HashMap<String, String>> mProgressUpdate;
+        Callback forumfetched;
+        Callback threadfetched;
+        Callback<HashMap<String, String>> forumProgressUpdate;
+        Callback<HashMap<String, String>> threadProgressUpdate;
         Parser mParser;
+		ErrorHandler errorHandler;
 
-        public ForumsParserTask(Context context, Callback callback) {
+        public ContentParserTask(Context context, Callback forumFetched, Callback threadFetched, ErrorHandler eHandler) {
             mParser = new Parser(context);
             mContext = context;
-            mCallback = callback;
+			forumfetched = forumFetched;
+			threadfetched = threadFetched;
+			errorHandler = eHandler;
 
-            mProgressUpdate = new Callback<HashMap<String, String>>() {
+			// Send these to parser
+            forumProgressUpdate = new Callback<HashMap<String, String>>() {
                 @Override
                 public void onTaskComplete(HashMap<String, String> data) {
-                    publishProgress(data);
+                    publishProgress(data, TYPE_FORUM);
                 }
             };
+			threadProgressUpdate = new Callback<HashMap<String, String>>() {
+				@Override
+				public void onTaskComplete(HashMap<String, String> data) {
+					publishProgress(data, TYPE_THREAD);
+				}
+			};
         }
 
         @Override
-        protected void onProgressUpdate(HashMap<String, String>... data) {
+        protected void onProgressUpdate(Object... data) {
             super.onProgressUpdate(data[0]);
-            // Give back to fragment
-            mCallback.onTaskComplete(data[0]);
+			// Decide what type of data it is
+			switch ((Integer)data[1]) {
+				case TYPE_FORUM:
+					// Return subforum
+					forumfetched.onTaskComplete(data[0]);
+					break;
+				case TYPE_THREAD:
+					// Return thread
+					threadfetched.onTaskComplete(data[0]);
+					break;
+			}
         }
 
         @Override
-        protected Boolean doInBackground(String... strings) {
+        protected String doInBackground(String... strings) {
+			String errorMessage = null;
             try {
                 // Url, Callback
-                //mParser.getCategoryContent(strings[0], mProgressUpdate);
-				NewParser parser = new NewParser(mContext);
-				parser.getForums(strings[0], mProgressUpdate);
+                errorMessage = mParser.getSubforumsAndThreads(strings[0], forumProgressUpdate, threadProgressUpdate);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
-        }
-    }
-
-    public class ThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
-
-        Context mContext;
-        Parser mParser;
-        Callback mCallback;
-        Callback mProgressUpdate;
-
-        public ThreadsParserTask(Context context, Callback callback) {
-            mParser = new Parser(context);
-            mContext = context;
-            mCallback = callback;
-
-            mProgressUpdate = new Callback<HashMap<String, String>>() {
-                @Override
-                public void onTaskComplete(HashMap<String, String> data) {
-                    publishProgress(data);
-                }
-            };
+            return errorMessage;
         }
 
-        @Override
-        protected Boolean doInBackground(String... strings) {
-            try {
-                //mParser.getForumContents(strings[0], mProgressUpdate);
-				NewParser parser = new NewParser(mContext);
-				parser.getThreads(strings[0], mProgressUpdate);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
+		@Override
+		protected void onPostExecute(String response) {
+			super.onPostExecute(response);
+			if(response != null) {
+				hasErrors = true;
+				mErrorHandler.handleError(response);
+			} else {
+				hasErrors = false;
+			}
+		}
+	}
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-        }
-
-        @Override
-        protected void onProgressUpdate(HashMap<String, String>... threadItem) {
-            super.onProgressUpdate(threadItem[0]);
-            mCallback.onTaskComplete(threadItem[0]);
-        }
-    }
-
-    ThreadsParserTask threadsParserTask;
-    ForumsParserTask forumsParserTask;
+	private ContentParserTask contentParserTask;
     private Callback<HashMap<String, String>> threadFetched;
-    Callback<HashMap<String, String>> forumFetched;
+	private Callback<HashMap<String, String>> forumFetched;
 
-	ShowThreadsAdapter mAdapter;
+	private ErrorHandler mErrorHandler;
+	private boolean hasErrors;
+	private String errorMessage;
+
+	private ShowThreadsAdapter mAdapter;
 	int selected_page;
-	String forum_url = null;
-    String base_url;
-    String forum_name;
-    String forum_id;
+	private String forum_url = null;
+	private String base_url;
+	private String forum_name;
+	private String forum_id;
     int num_pages;
-    TextView header;
-    TextView headerright;
+	private TextView header;
+	private TextView headerright;
 
-    OnOptionSelectedListener mListener;
-    Activity mActivity;
-    Menu menu;
+	private OnOptionSelectedListener mListener;
+	private Activity mActivity;
 
     @Override
     public void onAttach(Activity activity) {
@@ -145,31 +137,26 @@ public class ShowThreadsFragment extends ListFragment {
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
-    }
-    @Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        this.menu = menu;
-        menu.clear();
-		inflater.inflate(R.menu.forum_default_menu, menu);
+		super.onCreateOptionsMenu(menu, inflater);
+	}
 
-        try {
-            if(LoginHandler.loggedIn(mActivity) && mAdapter.getThreads().size() > 0)
-                inflater.inflate(R.menu.forum_loggedin_menu, menu);
-        } catch(NullPointerException e) {
-            e.printStackTrace();
-        }
+	@Override
+	public void onPrepareOptionsMenu(Menu menu) {
+		super.onPrepareOptionsMenu(menu);
+
+		menu.clear();
+		mActivity.getMenuInflater().inflate(R.menu.forum_default_menu, menu);
+
+		try {
+			if(LoginHandler.loggedIn(mActivity) && mAdapter.getThreads().size() > 0)
+				mActivity.getMenuInflater().inflate(R.menu.forum_loggedin_menu, menu);
+		} catch(NullPointerException e) {
+			e.printStackTrace();
+		}
 
 		// Set up search
-		MenuItem searchItem = menu.findItem(R.id.thread_search);
+		MenuItem searchItem = menu.findItem(R.id.forum_search);
 		SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
 		searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
 			@Override
@@ -187,7 +174,6 @@ public class ShowThreadsFragment extends ListFragment {
 			}
 		});
 
-		super.onCreateOptionsMenu(menu, inflater);
 	}
 
 	@Override
@@ -202,7 +188,9 @@ public class ShowThreadsFragment extends ListFragment {
                 break;
             case R.id.forum_update:
                 Bundle bundle = new Bundle();
-                Toast.makeText(mActivity,"Ej implementerad än", Toast.LENGTH_SHORT ).show();
+				bundle.putString("ForumUrl", base_url);
+				bundle.putString("ForumName", forum_name);
+				((MainActivity)mActivity).onOptionSelected(item.getItemId(), bundle);
                 break;
         }
 		return super.onOptionsItemSelected(item);
@@ -227,6 +215,37 @@ public class ShowThreadsFragment extends ListFragment {
         setHasOptionsMenu(true);
 
         mAdapter = new ShowThreadsAdapter(mActivity);
+
+		forumFetched = new Callback<HashMap<String, String>>() {
+			@Override
+			public void onTaskComplete(HashMap<String, String> data) {
+				mAdapter.addForumItem(data);
+				mAdapter.notifyDataSetChanged();
+			}
+		};
+
+		threadFetched = new Callback<HashMap<String, String>>() {
+			boolean invalidated = false;
+			@Override
+			public void onTaskComplete(HashMap<String, String> data) {
+				mAdapter.addThreadItem(data);
+				mAdapter.notifyDataSetChanged();
+				if(!invalidated) {
+					((MainActivity) mActivity).supportInvalidateOptionsMenu();
+					invalidated = true;
+				}
+			}
+		};
+
+		mErrorHandler = new ErrorHandler() {
+			@Override
+			public void handleError(String errormessage) {
+				if(hasErrors) {
+					errorMessage = errormessage;
+					showErrorBox(null);
+				}
+			}
+		};
 
         if(savedInstanceState != null) {
             // Restore adapter
@@ -255,35 +274,34 @@ public class ShowThreadsFragment extends ListFragment {
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
-
-            forumFetched = new Callback<HashMap<String, String>>() {
-                @Override
-                public void onTaskComplete(HashMap<String, String> data) {
-                    mAdapter.addForumItem(data);
-                    mAdapter.notifyDataSetChanged();
-                }
-            };
-
-            threadFetched = new Callback<HashMap<String, String>>() {
-                boolean invalidated = false;
-                @Override
-                public void onTaskComplete(HashMap<String, String> data) {
-                    mAdapter.addThreadItem(data);
-                    mAdapter.notifyDataSetChanged();
-                    if(!invalidated) {
-                        ((MainActivity) mActivity).supportInvalidateOptionsMenu();
-                        invalidated = true;
-                    }
-                }
-            };
-
-            forumsParserTask = new ForumsParserTask(mActivity, forumFetched);
-            threadsParserTask = new ThreadsParserTask(mActivity, threadFetched);
-            forumsParserTask.execute(forum_url);
-            threadsParserTask.execute(forum_url);
+			getContent();
         }
         setListAdapter(mAdapter);
     }
+
+	private void showErrorBox(View v) {
+		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
+		if(errorlayout.getVisibility() != View.VISIBLE) {
+			final Button retrybutton = (Button) errorlayout.findViewById(R.id.retrybutton);
+			retrybutton.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View view) {
+					errorlayout.setVisibility(View.GONE);
+					mAdapter.getThreads().clear();
+					mAdapter.getForums().clear();
+					mAdapter.notifyDataSetChanged();
+					getContent();
+				}
+			});
+			errorlayout.setVisibility(View.VISIBLE);
+			((TextView) errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+		}
+	}
+
+	private void getContent() {
+		contentParserTask = new ContentParserTask(mActivity, forumFetched, threadFetched, mErrorHandler);
+		contentParserTask.execute(forum_url);
+	}
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -300,6 +318,10 @@ public class ShowThreadsFragment extends ListFragment {
             showthisname = "Error-name";
             e.printStackTrace();
         }
+
+		if(hasErrors) {
+			showErrorBox(view);
+		}
 
         header.setText(showthisname);
 		if(num_pages == 1) {

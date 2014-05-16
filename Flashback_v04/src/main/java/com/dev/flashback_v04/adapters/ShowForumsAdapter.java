@@ -63,19 +63,6 @@ public class ShowForumsAdapter extends BaseAdapter {
 		forumTitle.setText(mItems.get(i).get("ForumName"));
 		forumInfo.setText(mItems.get(i).get("ForumInfo"));
 
-        // Hackish solution. Textviews did not get their proper color from the theme after the theme had been changed
-            SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-            boolean darkTheme = appPrefs.getBoolean("theme_preference", false);
-
-           /* if(darkTheme) {
-                forumTitle.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
-                forumInfo.setTextAppearance(mContext, android.R.style.TextAppearance_Small);
-            } else {
-                forumTitle.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
-                forumInfo.setTextAppearance(mContext, android.R.style.TextAppearance_Small);
-            }*/
-        // End of hackish
-
         return view;
 	}
 

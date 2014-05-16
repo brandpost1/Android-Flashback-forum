@@ -41,8 +41,6 @@ import com.dev.flashback_v04.fragments.special.PostReplyFragment;
 import com.dev.flashback_v04.fragments.special.PrivateMessagingPager;
 import com.dev.flashback_v04.fragments.special.SearchFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
-import com.dev.flashback_v04.interfaces.UpdateForum;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
@@ -52,7 +50,7 @@ import java.util.ArrayList;
 /**
  * Created by Viktor on 2013-07-13.
  */
-public class MainActivity_test extends ActionBarActivity implements OnOptionSelectedListener, UpdateStuff<Bundle>, UpdateForum<Bundle> {
+public class MainActivity_test extends ActionBarActivity implements OnOptionSelectedListener {
 
 	public FragmentManager fragmentManager;
 
@@ -625,7 +623,7 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 	public void onOptionSelected(int itemId, Bundle args) {
 		switch (itemId) {
 			case R.id.thread_new_reply:
-				PostReplyFragment fragment = new PostReplyFragment(this);
+				PostReplyFragment fragment = new PostReplyFragment();
 				fragment.setArguments(args);
 				try {
 					getSupportFragmentManager().beginTransaction()
@@ -665,7 +663,6 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 
 	// Bundle should include:
 	// Url, number of pages, and current page
-	@Override
 	public void updateThread(final Bundle o) {
 		runOnUiThread(new Runnable() {
 			@Override
@@ -682,7 +679,6 @@ public class MainActivity_test extends ActionBarActivity implements OnOptionSele
 		});
 	}
 
-	@Override
 	public void updateForum(final Bundle o) {
 		runOnUiThread(new Runnable() {
 			@Override

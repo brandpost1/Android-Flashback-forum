@@ -7,7 +7,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -204,7 +204,7 @@ public class SecondaryPager extends Fragment {
         return v;
     }
 
-    public class SecondaryPagerAdapter extends FragmentPagerAdapter {
+    public class SecondaryPagerAdapter extends FragmentStatePagerAdapter {
 
         int NUM_PAGES = 0;
         int FRAG_TYPE;

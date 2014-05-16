@@ -5,16 +5,19 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
 
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 
-import com.dev.flashback_v04.NewParser;
+
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 
@@ -22,7 +25,7 @@ import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowForumsAdapter;
 
 import com.dev.flashback_v04.interfaces.Callback;
-
+import com.dev.flashback_v04.interfaces.ErrorHandler;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -34,17 +37,21 @@ import java.util.HashMap;
 public class ShowForumsFragment extends ListFragment {
 
     // Fetches category content
-    public class ForumsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+    private class ForumsParserTask extends AsyncTask<String, HashMap<String, String>, String> {
 
         Context mContext;
         Callback mCallback;
         Callback<HashMap<String, String>> mProgressUpdate;
+		ErrorHandler mErrorHandler;
+
         Parser mParser;
 
-        public ForumsParserTask(Context context, Callback callback) {
+        public ForumsParserTask(Context context, Callback callback, ErrorHandler errorHandler) {
             mParser = new Parser(context);
             mContext = context;
             mCallback = callback;
+
+			mErrorHandler = errorHandler;
 
             mProgressUpdate = new Callback<HashMap<String, String>>() {
                 @Override
@@ -62,27 +69,41 @@ public class ShowForumsFragment extends ListFragment {
         }
 
         @Override
-        protected Boolean doInBackground(String... strings) {
+        protected String doInBackground(String... strings) {
+			String response = null;
             try {
                 // Url, Callback
-                //mParser.getCategoryContent(strings[0], mProgressUpdate);
-				NewParser parser = new NewParser(mContext);
-				parser.getForums(strings[0], mProgressUpdate);
+                response = mParser.getCategoryContent(strings[0], mProgressUpdate);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
+            return response;
         }
-    }
+
+		@Override
+		protected void onPostExecute(String response) {
+			super.onPostExecute(response);
+			if(response != null) {
+				mErrorHandler.handleError(response);
+			} else {
+				hasErrors = false;
+			}
+		}
+	}
 
     private Callback forumFetched;
-	ShowForumsAdapter mAdapter;
-	int selected_category;
-	ArrayList<String> categories;
-    ArrayList<String> categorynames;
-	String category_url = null;
-    Activity mActivity;
-    ForumsParserTask forumsParserTask;
+	private ErrorHandler mErrorHandler;
+
+	private boolean hasErrors;
+	private String errorMessage;
+
+	private ShowForumsAdapter mAdapter;
+	private int selected_category;
+	private ArrayList<String> categories;
+	private ArrayList<String> categorynames;
+	private String category_url = null;
+	private Activity mActivity;
+    private ForumsParserTask forumsParserTask;
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -103,6 +124,8 @@ public class ShowForumsFragment extends ListFragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+		outState.putBoolean("HasErrors", hasErrors);
+		outState.putString("ErrorMessage", errorMessage);
         outState.putStringArrayList("SavedCategories", categories);
         outState.putString("SavedUrl", category_url);
         outState.putInt("SavedSelected", selected_category);
@@ -115,28 +138,38 @@ public class ShowForumsFragment extends ListFragment {
         super.onCreate(savedInstanceState);
         mAdapter = new ShowForumsAdapter(getActivity());
 
+		forumFetched = new Callback<HashMap<String, String>>() {
+			@Override
+			public void onTaskComplete(HashMap<String, String> data) {
+				mAdapter.addItem(data);
+				mAdapter.notifyDataSetChanged();
+			}
+		};
+
+		mErrorHandler = new ErrorHandler() {
+			@Override
+			public void handleError(String errormessage) {
+				hasErrors = true;
+				errorMessage = errormessage;
+				showErrorBox(null);
+			}
+		};
+
         if(savedInstanceState == null) {
             categories = getArguments().getStringArrayList("Categories");
             selected_category = getArguments().getInt("index");
             categorynames = getArguments().getStringArrayList("CategoryNames");
             category_url = categories.get(selected_category);
 
-            forumFetched = new Callback<HashMap<String, String>>() {
-                @Override
-                public void onTaskComplete(HashMap<String, String> data) {
-                    mAdapter.addItem(data);
-                    mAdapter.notifyDataSetChanged();
-                }
-            };
-
-            forumsParserTask = new ForumsParserTask(mActivity, forumFetched);
-            forumsParserTask.execute(categories.get(selected_category));
+			getContent();
         } else {
             // Restore adapter
             ArrayList<HashMap<String, String>> savedValues = (ArrayList<HashMap<String, String>>) savedInstanceState.getSerializable("AdapterValues");
             mAdapter.addItems(savedValues);
             mAdapter.notifyDataSetChanged();
             // Restore other
+			hasErrors = savedInstanceState.getBoolean("HasErrors");
+			errorMessage = savedInstanceState.getString("ErrorMessage");
             categories = savedInstanceState.getStringArrayList("SavedCategories");
             category_url = savedInstanceState.getString("SavedUrl");
             selected_category = savedInstanceState.getInt("SavedSelected");
@@ -144,25 +177,52 @@ public class ShowForumsFragment extends ListFragment {
         }
     }
 
+	private void getContent() {
+		forumsParserTask = new ForumsParserTask(mActivity, forumFetched, mErrorHandler);
+		forumsParserTask.execute(categories.get(selected_category));
+	}
+
+	private void showErrorBox(View v) {
+		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
+
+		final Button retrybutton = (Button)errorlayout.findViewById(R.id.retrybutton);
+		retrybutton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				errorlayout.setVisibility(View.GONE);
+				mAdapter.getmItems().clear();
+				mAdapter.notifyDataSetChanged();
+				getContent();
+			}
+		});
+		errorlayout.setVisibility(View.VISIBLE);
+		((TextView)errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+	}
+
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
+        View view = null;
+		view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
 
-        setListAdapter(mAdapter);
+		setListAdapter(mAdapter);
 
-        String showthisname;
-        try {
-            showthisname = categorynames.get(selected_category);
-        } catch (NullPointerException e) {
-            showthisname = "Error-name";
-            e.printStackTrace();
-        }
+		String showthisname;
+		try {
+			showthisname = categorynames.get(selected_category);
+		} catch (NullPointerException e) {
+			showthisname = "Error-name";
+			e.printStackTrace();
+		}
 
+		if(hasErrors) {
+			showErrorBox(view);
+		}
 
-        TextView header = (TextView)view.findViewById(R.id.headerleft);
-        TextView headerright = (TextView)view.findViewById(R.id.headerright);
-        header.setText(showthisname);
-        headerright.setText("");
+		TextView header = (TextView) view.findViewById(R.id.headerleft);
+		TextView headerright = (TextView) view.findViewById(R.id.headerright);
+		header.setText(showthisname);
+		headerright.setText("");
+
 		return view;
 
 	}

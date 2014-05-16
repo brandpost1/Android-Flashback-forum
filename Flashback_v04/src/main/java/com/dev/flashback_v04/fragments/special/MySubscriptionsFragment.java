@@ -18,7 +18,6 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;

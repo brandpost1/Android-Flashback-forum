@@ -94,8 +94,10 @@ public class MySubsAdapter extends BaseAdapter {
 			}
 		});
 
-		if(mItems.get(i).get("Checked") == "1") {
+		if(mItems.get(i).get("Checked").equals("1")) {
 			checkBox.setChecked(true);
+		} else {
+			checkBox.setChecked(false);
 		}
 		if(mItems.get(i).get("BoldTitle").equals("true")) {
 			threadName.setTypeface(Typeface.DEFAULT_BOLD);

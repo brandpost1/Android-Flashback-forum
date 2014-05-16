@@ -2,12 +2,11 @@ package com.dev.flashback_v04;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.http.HttpResponseCache;
+
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
 
-import com.dev.flashback_v04.interfaces.RedirectCallback;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -20,10 +19,12 @@ import org.apache.http.message.BasicNameValuePair;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
 
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -32,6 +33,7 @@ import java.net.HttpURLConnection;
 
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,24 +48,30 @@ import javax.net.ssl.HttpsURLConnection;
  */
 public class LoginHandler {
 
-    public static Document basicConnect(String site) throws IOException {
+    public static Document basicConnect(String site, int timeout) throws IOException {
         URL url = new URL(site);
         Document current = null;
         HttpsURLConnection connection = null;
+		InputStream response = null;
 
-        connection = (HttpsURLConnection)url.openConnection();
-		connection.setUseCaches(true);
+		try	{
+			connection = (HttpsURLConnection)url.openConnection();
+			connection.setConnectTimeout(timeout);
+			connection.setReadTimeout(timeout*2);
 
-        InputStream response;
-        response = connection.getInputStream();
-
-        current = Jsoup.parse(response, null, site);
-        response.close();
+			response = connection.getInputStream();
+			current = Jsoup.parse(response, null, site);
+		} finally {
+			if(response != null)
+				response.close();
+			if(connection != null)
+				connection.disconnect();
+		}
 
         return current;
     }
 
-    public static Document cookieConnect(String site, Map<String, String> cookie, Context context) throws IOException {
+    public static Document cookieConnect(String site, Map<String, String> cookie, Context context, int timeout) throws IOException {
 		URL url;
 		try {
 			url = new URL(site);
@@ -81,9 +89,8 @@ public class LoginHandler {
 		}
 		//connection.setDoOutput(true);
 		connection.setRequestMethod("GET");
-		connection.setConnectTimeout(3000);
-		connection.setReadTimeout(0);
-		connection.setUseCaches(true);
+		connection.setConnectTimeout(timeout);
+		connection.setReadTimeout(timeout*2);
 
 		// Get sessioncookie
 		Map<String, String> cookies = cookie;
@@ -129,6 +136,7 @@ public class LoginHandler {
         current = Jsoup.parse(response, null, site);
 
         response.close();
+		connection.disconnect();
 
         return current;
     }
@@ -231,6 +239,8 @@ public class LoginHandler {
             //getPreferences(context);
             return true;
         }
+
+		connection.disconnect();
         return false;
     }
 
@@ -326,10 +336,10 @@ public class LoginHandler {
                     new BasicNameValuePair("poststarttime", ""),
                     new BasicNameValuePair("loggedinuser", userId),
                     new BasicNameValuePair("sbutton", "Skicka svar"),
-                    new BasicNameValuePair("signature", "1"),
+                    //new BasicNameValuePair("signature", "1"),
                     new BasicNameValuePair("parseurl", "1"),
                     new BasicNameValuePair("disablesmilies", "0"),
-                    new BasicNameValuePair("emailupdate", "9999"),    // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
+                    //new BasicNameValuePair("emailupdate", "9999"),    // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
                     new BasicNameValuePair("stoken", ""),
             };
 
@@ -419,8 +429,8 @@ public class LoginHandler {
 				params.put("sbutton", "Spara ändringar");
 				params.put("signature", "1");
 				params.put("parseurl", "1");
-				params.put("emailupdate", "9999");
-				params.put("folderid", "0");
+				//params.put("emailupdate", "9999");
+				//params.put("folderid", "0");
 				params.put("stoken", "");
 
 				// Convert parameters to single querystring
@@ -754,7 +764,7 @@ public class LoginHandler {
 		return false;
 	}
 
-    public static boolean postNewThread(RedirectCallback callback, String inForum, String subject, String message, Context context) throws IOException{
+    public static boolean postNewThread(String inForum, String subject, String message, Context context) throws IOException{
         if(loggedIn(context)) {
             URL url = null;
             HttpsURLConnection connection = null;
@@ -790,16 +800,18 @@ public class LoginHandler {
             String postMessage = message;
 
             // Some headers for first request
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-            connection.setRequestProperty("Cookie", cookiestring);
+            //connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
+            //connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            //connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            //connection.setRequestProperty("Cookie", cookiestring);
 
             // Get cookie from response, since apparently it's needed in a second request
-            List<String> cookielist = connection.getHeaderFields().get("Set-Cookie");
+            //List<String> cookielist = connection.getHeaderFields().get("Set-Cookie");
+			//Map<String, List<String>> headers = connection.getHeaderFields();
 
             // Get cookievalue
-            String hash = cookielist.get(0).split(";", 2)[0].split("=")[1];
+            //String hash = cookielist.get(0).split(";", 2)[0].split("=")[1];
+            String hash = cookies.get("vbscansessionhash");
 
             // Establish a new connection
             connection = (HttpsURLConnection)url.openConnection();
@@ -828,7 +840,7 @@ public class LoginHandler {
             params.put("signature", "1");
             params.put("parseurl", "1");
             params.put("emailupdate", "9999");  // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
-            params.put("disablesmilies", "1"); //Optional 1 = disable)
+            params.put("disablesmilies", "0"); //Optional 1 = disable)
             params.put("folderid", "0");
             params.put("stoken", "");
 
@@ -852,13 +864,10 @@ public class LoginHandler {
             int responseCode = connection.getResponseCode();
             if(responseCode == HttpURLConnection.HTTP_MOVED_PERM) {
                 // Probably successful
-                String newLocation = connection.getHeaderField("Location");
-                // Use newLocation to open the new thread
-                callback.setRedirect(newLocation);
                 return true;
             }
 
-            InputStream response = connection.getInputStream();
+            //InputStream response = connection.getInputStream();
 
 			/*
             if(response != null) {

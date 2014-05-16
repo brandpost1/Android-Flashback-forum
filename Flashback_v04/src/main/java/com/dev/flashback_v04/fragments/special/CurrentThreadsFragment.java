@@ -3,14 +3,13 @@ package com.dev.flashback_v04.fragments.special;
 import android.app.Activity;
 import android.content.Context;
 
-import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -95,10 +94,11 @@ public class CurrentThreadsFragment extends ListFragment {
         outState.putSerializable("AdapterValues", mAdapter.getItems());
     }
 
-    @Override
+	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAdapter = new CurrentThreadsAdapter(getActivity());
+		setListAdapter(mAdapter);
 
         if(savedInstanceState == null) {
             threadFetched = new Callback<HashMap<String, String>>() {
@@ -116,7 +116,7 @@ public class CurrentThreadsFragment extends ListFragment {
             mAdapter.putItems(items);
             mAdapter.notifyDataSetChanged();
         }
-        setListAdapter(mAdapter);
+
     }
 
     @Override

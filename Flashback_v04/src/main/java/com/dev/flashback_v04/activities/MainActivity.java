@@ -1,8 +1,5 @@
 package com.dev.flashback_v04.activities;
 
-
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -10,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+
+import android.net.Uri;
 import android.net.http.HttpResponseCache;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,14 +19,18 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
+
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+
 import android.widget.AdapterView;
 import android.widget.EditText;
+
+import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,29 +54,25 @@ import com.dev.flashback_v04.fragments.special.PrivateMessagingPager;
 import com.dev.flashback_v04.fragments.special.SearchFragment;
 import com.dev.flashback_v04.fragments.special.ViewPMFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
-import com.dev.flashback_v04.interfaces.UpdateForum;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
+
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
-import org.apache.http.protocol.HTTP;
-
 import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 
 /**
  * Created by Viktor on 2013-07-13.
  */
-public class MainActivity extends ActionBarActivity implements OnOptionSelectedListener, UpdateStuff<Bundle>, UpdateForum<Bundle> {
+public class MainActivity extends ActionBarActivity implements OnOptionSelectedListener {
 
 	public FragmentManager fragmentManager;
-
-	private static final int CONFIG_CAT_FORUMS = 0;
-	private static final int CONFIG_FORUMS_THREADS = 1;
-	private static final int CONFIG_THREADS_POSTS = 2;
-	private static int CURRENT_APP_CONFIG;
 
     /*
     Banner ads
@@ -95,11 +94,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	* */
 	public MainActivity() {
         activity = this;
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		return super.onCreateOptionsMenu(menu);
 	}
 
 	public void openPrivateMessage(Bundle args) {
@@ -277,6 +271,8 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         }
 
         if(nextVersion > prevVersion) {
+
+
             final AlertDialog newsdialog = new AlertDialog.Builder(this)
                     .setTitle(R.string.NEWSHEADLINE)
                     .setMessage(R.string.NEWSMESSAGE)
@@ -292,6 +288,39 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                     .edit()
                     .putInt("VersionCode", nextVersion)
                     .commit();
+
+
+			Calendar nowdate = Calendar.getInstance();
+			String toDateAsString = "05/04/2014";
+			Date toDate = null;
+			try {
+				toDate = new SimpleDateFormat("MM/dd/yyyy").parse(toDateAsString);
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+
+
+			if (Constants.type == Constants.Type.FREE) {
+				if (nowdate.getTimeInMillis()*1000 < toDate.getTime()*1000) {
+					View sale = getLayoutInflater().inflate(R.layout.eastersale, null);
+					ImageView bunny = (ImageView) sale.findViewById(R.id.bunnylink);
+					bunny.setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View view) {
+							try {
+								startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.brandpost.flashback")));
+							} catch (android.content.ActivityNotFoundException anfe) {
+								startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.brandpost.flashback")));
+							}
+						}
+					});
+					final AlertDialog easterSale = new AlertDialog.Builder(this)
+							.setView(sale)
+							.create();
+					//easterSale.show();
+				}
+			}
+
         }
 
     }
@@ -310,16 +339,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-
-		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-			try {
-				File httpCacheDir = new File(this.getCacheDir(), "http");
-				long httpCacheSize = 10 * 1024 * 1024;
-				HttpResponseCache.install(httpCacheDir, httpCacheSize);
-			} catch (IOException e) {
-				System.out.println("FLASHBACK - HTTP response cache installation failed:");
-			}
-		}
 
 		if(Constants.type == Constants.Type.FREE) {
 			ADS_ACTIVATED = true;
@@ -469,18 +488,33 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
                         break;
                     case 4:
-                        Toast.makeText(getBaseContext(), "Sök finns för tillfället bara inuti forum samt inuti trådar. Avancerad sökning kommer eventuellt senare.", Toast.LENGTH_LONG).show();
-                        mDrawerLayout.closeDrawer(Gravity.LEFT);
+                        //Toast.makeText(getBaseContext(), "Sök finns för tillfället bara inuti forum samt inuti trådar. Avancerad sökning kommer eventuellt senare.", Toast.LENGTH_LONG).show();
 
-                        SearchFragment searchFragment = new SearchFragment();
-                        /*try {
-                            fragmentManager.beginTransaction()
-                                    .addToBackStack("Search")
-                                    .replace(R.id.fragmentcontainer, searchFragment)
-                                    .commit();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }*/
+						final View searchview = getLayoutInflater().inflate(R.layout.searchpopup, null);
+
+						AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+						builder.setView(searchview);
+						builder.setTitle("Sök i hela forumet");
+						builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int id) {
+								String query = "";
+								EditText textbox = (EditText)searchview.findViewById(R.id.searchBox);
+								RadioGroup group = (RadioGroup)searchview.findViewById(R.id.searchgroup);
+								int selected = group.getCheckedRadioButtonId();
+								if(selected == R.id.searchPosts) {
+									query = "https://www.flashback.org/sok/" + textbox.getText() + "?sp=1";
+									query = query.replace(" ", "+");
+									searchThread(query);
+								} else if(selected == R.id.searchThreads) {
+									query = "https://www.flashback.org/sok/" + textbox.getText();
+									query = query.replace(" ", "+");
+									searchForum(query);
+								}
+							}
+						});
+
+						AlertDialog sdialog = builder.create();
+						sdialog.show();
                         mDrawerLayout.closeDrawer(Gravity.LEFT);
 
                         break;
@@ -739,7 +773,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
     public void onOptionSelected(int itemId, Bundle args) {
         switch (itemId) {
             case R.id.thread_new_reply:
-                PostReplyFragment fragment = new PostReplyFragment(this);
+                PostReplyFragment fragment = new PostReplyFragment();
                 fragment.setArguments(args);
                 try {
                     getSupportFragmentManager().beginTransaction()
@@ -774,6 +808,9 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 					e.printStackTrace();
 				}
 				break;
+			case R.id.forum_update:
+				updateForum(args, true);
+				break;
             case R.id.gotolastpage:
                 openThread(args.getString("Url"), args.getInt("LastPage"), args.getString("ThreadName"));
                 break;
@@ -791,7 +828,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
     // Bundle should include:
     // Url, number of pages, and current page
-    @Override
     public void updateThread(final Bundle bundle) {
         runOnUiThread(new Runnable() {
             @Override
@@ -808,13 +844,17 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         });
     }
 
-    @Override
-    public void updateForum(final Bundle o) {
+
+    public void updateForum(final Bundle o, final boolean onestep) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                // Pop back two steps
-                getSupportFragmentManager().popBackStack("Forums", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+				if(onestep) {
+					getSupportFragmentManager().popBackStack();
+				} else {
+					// Pop back two steps
+					getSupportFragmentManager().popBackStack("Forums", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+				}
 
                 // Retrieve stuff in bundle
                 String url = o.getString("ForumUrl");
@@ -824,7 +864,6 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 openForum(url, forumname);
             }
         });
-
     }
 
     public void refreshDrawer() {

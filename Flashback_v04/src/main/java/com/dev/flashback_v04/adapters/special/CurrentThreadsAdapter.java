@@ -29,7 +29,6 @@ public class CurrentThreadsAdapter extends BaseAdapter {
 		mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mItems = new ArrayList<HashMap<String, String>>();
-		System.out.println("Currentthreadsadapter: ");
     }
 
     @Override

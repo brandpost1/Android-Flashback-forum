@@ -4,15 +4,19 @@ package com.dev.flashback_v04.fragments;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.view.ViewPager;
 import android.support.v7.widget.SearchView;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -22,39 +26,105 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.NumberPicker;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.LoginHandler;
+import com.dev.flashback_v04.Parser;
+import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
 import com.dev.flashback_v04.asynctasks.special.AddSubsTask;
+import com.dev.flashback_v04.interfaces.Callback;
+import com.dev.flashback_v04.interfaces.ErrorHandler;
+import com.dev.flashback_v04.interfaces.OnTaskComplete;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
 
 import android.support.v7.widget.ShareActionProvider;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Viktor on 2013-06-25.
  */
 public class ShowPostsFragment extends ListFragment implements PostsFragCallback<Bundle> {
 
-    ShowPostsAdapter mAdapter;
-	int selected_page;
-	int selected_page_base;
-    int numPages;
-	String thread_url = null;
-	String thread_url_withpagenr = null;
+	public class PostsParserTask extends AsyncTask<String, ArrayList<Post>, String> {
 
-    ShareActionProvider mShare;
+		private Parser mParser;
+		private Callback<ArrayList<Post>> postsFetched;
+		private Callback<ArrayList<Post>> postsUpdate;
+		private ErrorHandler errorHandler;
 
-    Activity mActivity;
+		public PostsParserTask(Context context, Callback taskComplete, ErrorHandler handler) {
+			mParser = new Parser(context);
+			postsFetched = taskComplete;
+			errorHandler = handler;
+
+			postsUpdate = new Callback<ArrayList<Post>>() {
+				@Override
+				public void onTaskComplete(ArrayList<Post> data) {
+					publishProgress(data);
+				}
+			};
+		}
+
+		@Override
+		protected void onProgressUpdate(ArrayList<Post>... values) {
+			super.onProgressUpdate(values);
+			postsFetched.onTaskComplete(values[0]);
+		}
+
+		@Override
+		protected String doInBackground(String... strings) {
+			String errormsg = null;
+			try {
+				errormsg = mParser.getThreadContent(strings[0], postsUpdate);
+			} catch (IllegalStateException e) {
+				e.printStackTrace();
+			}
+			return errormsg;
+		}
+
+		@Override
+		protected void onPostExecute(String result) {
+			super.onPostExecute(result);
+			if(result != null) {
+				hasErrors = true;
+				errorHandler.handleError(result);
+			} else {
+				hasErrors = false;
+			}
+		}
+
+	}
+
+	private boolean hasErrors;
+	private Callback<ArrayList<Post>> postsFetched;
+	private ErrorHandler mErrorHandler;
+	private String errorMessage;
+
+	private PostsParserTask postsParserTask;
+	private ShowPostsAdapter mAdapter;
+	private int selected_page;
+	private int selected_page_base;
+	private int numPages;
+	private String thread_url = null;
+	private String thread_url_withpagenr = null;
+
+	private ShareActionProvider mShare;
+
+	private Activity mActivity;
 
 
-    @Override
+	@Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         mActivity = activity;
@@ -62,29 +132,31 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        // Show updatebutton
-        menu.clear();
-        inflater.inflate(R.menu.thread_default_menu, menu);
+		super.onCreateOptionsMenu(menu, inflater);
 
-        SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
-        boolean shareActivated = appPrefs.getBoolean("thread_sharebutton", false);
+		// Show updatebutton
+		menu.clear();
+		inflater.inflate(R.menu.thread_default_menu, menu);
 
-        // Setup share button if activated in Preferences
-        if(shareActivated) {
-            // Inflate menuitem
-            inflater.inflate(R.menu.share, menu);
+		SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
+		boolean shareActivated = appPrefs.getBoolean("thread_sharebutton", false);
 
-            //
-            MenuItem shareButton = menu.findItem(R.id.thread_share);
-            mShare = (ShareActionProvider) MenuItemCompat.getActionProvider(shareButton);
+		// Setup share button if activated in Preferences
+		if(shareActivated) {
+			// Inflate menuitem
+			inflater.inflate(R.menu.share, menu);
 
-            // Intent for share button
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setAction(Intent.ACTION_SEND);
-            shareIntent.setType("text/plain");
-            shareIntent.putExtra(Intent.EXTRA_TEXT, thread_url_withpagenr);
-            mShare.setShareIntent(shareIntent);
-        }
+			//
+			MenuItem shareButton = menu.findItem(R.id.thread_share);
+			mShare = (ShareActionProvider) MenuItemCompat.getActionProvider(shareButton);
+
+			// Intent for share button
+			Intent shareIntent = new Intent(Intent.ACTION_SEND);
+			shareIntent.setAction(Intent.ACTION_SEND);
+			shareIntent.setType("text/plain");
+			shareIntent.putExtra(Intent.EXTRA_TEXT, thread_url_withpagenr);
+			mShare.setShareIntent(shareIntent);
+		}
 
 		// Set up search
 		MenuItem searchItem = menu.findItem(R.id.thread_search);
@@ -105,42 +177,70 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 			}
 		});
 
-        // If logged in, show new reply button in thread.
-        try {
-            if(LoginHandler.loggedIn(mActivity) && mAdapter.getCount() > 0)
-                inflater.inflate(R.menu.thread_reply, menu);
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        }
-		super.onCreateOptionsMenu(menu, inflater);
+		// If logged in, show new reply button in thread.
+		try {
+			if(LoginHandler.loggedIn(mActivity) && mAdapter.getCount() > 0)
+				inflater.inflate(R.menu.thread_reply, menu);
+		} catch (NullPointerException e) {
+			e.printStackTrace();
+		}
 	}
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        ((MainActivity)mActivity).supportInvalidateOptionsMenu();
-    }
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
 		setHasOptionsMenu(true);
-
 		thread_url = getArguments().getString("Url");
 		selected_page = getArguments().getInt("index") + 1;
 		selected_page_base = getArguments().getInt("index");
 		thread_url_withpagenr = thread_url.concat("p"+selected_page);
 
-        if(mAdapter == null) {		// Don't know if this is needed
-            mAdapter = new ShowPostsAdapter(mActivity,this, thread_url_withpagenr);
-            setListAdapter(mAdapter);
-        }
+		postsFetched = new Callback<ArrayList<Post>>() {
+			@Override
+			public void onTaskComplete(ArrayList<Post> data) {
+				mAdapter.updatePosts(data);
+				mAdapter.notifyDataSetChanged();
+			}
+		};
+
+		mErrorHandler = new ErrorHandler() {
+			@Override
+			public void handleError(String errormessage) {
+				if(hasErrors) {
+					errorMessage = errormessage;
+					showErrorBox(null);
+				}
+			}
+		};
+
+        mAdapter = new ShowPostsAdapter(mActivity);
+        setListAdapter(mAdapter);
+
+		getContent();
+
         super.onCreate(savedInstanceState);
+	}
+
+	private void showErrorBox(View v) {
+		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
+		if(errorlayout.getVisibility() != View.VISIBLE) {
+			final Button retrybutton = (Button) errorlayout.findViewById(R.id.retrybutton);
+			retrybutton.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View view) {
+					errorlayout.setVisibility(View.GONE);
+					mAdapter.clearData();
+					mAdapter.notifyDataSetChanged();
+					getContent();
+				}
+			});
+			errorlayout.setVisibility(View.VISIBLE);
+			((TextView) errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+		}
+	}
+
+	public void getContent() {
+		postsParserTask = new PostsParserTask(mActivity, postsFetched, mErrorHandler);
+		postsParserTask.execute(thread_url_withpagenr);
 	}
 
     @Override
@@ -148,7 +248,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
         switch (item.getItemId()) {
 			case R.id.thread_subscribe:
-
 				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 				builder.setTitle("Prenumeration")
 						.setMessage("Vill du prenumerera på den här tråden?")
@@ -165,7 +264,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 							}
 						});
 				builder.create().show();
-
 				break;
             case R.id.thread_new_reply:
                 Bundle args = new Bundle();
@@ -190,9 +288,11 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
             case R.id.thread_gotopage:
                 LayoutInflater inflater = mActivity.getLayoutInflater();
                 View v = inflater.inflate(R.layout.pagepicker_dialog, null);
+				final ViewPager viewPager = (ViewPager)getView().getParent();
 
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
                     final NumberPicker picker = (NumberPicker) v.findViewById(R.id.page_scroll_picker);
+
                     picker.setMaxValue(numPages);
                     picker.setMinValue(1);
                     picker.setValue(1);
@@ -205,11 +305,9 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                                 @TargetApi(Build.VERSION_CODES.HONEYCOMB)
                                 @Override
                                 public void onClick(DialogInterface dialogInterface, int i) {
-                                    Bundle gotobundle = new Bundle();
-                                    gotobundle.putInt("CurrentPage", picker.getValue());
-                                    gotobundle.putString("Url", thread_url);
-                                    gotobundle.putString("ThreadName", getArguments().getString("ThreadName"));
-                                    ((MainActivity)mActivity).updateThread(gotobundle);
+									if(viewPager != null) {
+										viewPager.setCurrentItem(picker.getValue() - 1);
+									}
                                 }
                             }).create();
                     pagepicker.show();
@@ -233,11 +331,9 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                                     }
                                     if(page > 0 && page <= numPages) {
                                         // In range
-                                        Bundle gotobundle = new Bundle();
-                                        gotobundle.putInt("CurrentPage", page);
-                                        gotobundle.putString("Url", thread_url);
-                                        gotobundle.putString("ThreadName", getArguments().getString("ThreadName"));
-                                        ((MainActivity)mActivity).updateThread(gotobundle);
+										if(viewPager != null) {
+											viewPager.setCurrentItem(page - 1);
+										}
                                     } else {
                                         Toast.makeText(mActivity, "Sidan existerar inte", Toast.LENGTH_SHORT).show();
                                     }
@@ -245,8 +341,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
                             }).create();
                     pagepicker.show();
                 }
-
-
 
                 break;
 
@@ -260,20 +354,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 		super.onActivityCreated(savedInstanceState);
 		getListView().setItemsCanFocus(true);
 		getListView().setDivider(null);
-
-        hasOptionsMenu();
-
-		getListView().setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-			@Override
-			public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-					return true;
-			}
-		});
-	}
-
-	@Override
-	public void onListItemClick(ListView l, View v, int position, long id) {
-		super.onListItemClick(l, v, position, id);
 	}
 
 	@Override
@@ -294,28 +374,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
         headerright.setText(page);
 
 		return view;
-
-	}
-
-	@Override
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-		menu.setHeaderTitle("Actions");
-		MenuInflater inflater = mActivity.getMenuInflater();
-		inflater.inflate(R.menu.thread_context, menu);
-
-	}
-
-	@Override
-	public boolean onContextItemSelected(MenuItem item) {
-		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-			switch (item.getItemId()) {
-				case R.id.gotolastpage:
-
-					return true;
-				default:
-					return super.onContextItemSelected(item);
-			}
 
 	}
 

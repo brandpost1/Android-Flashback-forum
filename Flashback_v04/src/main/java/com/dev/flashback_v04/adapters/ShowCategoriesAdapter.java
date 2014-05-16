@@ -29,9 +29,6 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 	XMLParser mParser;
 	LayoutInflater mInflater;
 
-
-
-
 	public ShowCategoriesAdapter(Context context) {
 
 		mContext = context;

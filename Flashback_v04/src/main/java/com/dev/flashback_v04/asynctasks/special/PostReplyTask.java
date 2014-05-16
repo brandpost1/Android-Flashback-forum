@@ -11,7 +11,6 @@ import android.widget.Toast;
 import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.interfaces.UpdateStuff;
 
 import java.io.IOException;
 
@@ -23,7 +22,6 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
     Parser mParser;
 
     ProgressDialog dialog;
-    UpdateStuff mCallback;
     int returnedPages = 1;
     String threadUrl = "";
     String message = "";
@@ -33,7 +31,6 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
     public PostReplyTask(Context context, Bundle args) {
         mParser = new Parser(context);
         mContext = context;
-        mCallback = (UpdateStuff)mContext;
         dialog = new ProgressDialog(mContext);
 
         threadUrl = args.getString("Url");

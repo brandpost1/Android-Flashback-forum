@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.asynctasks.special.PostReplyTask;
 
 import java.util.HashMap;
@@ -32,18 +33,17 @@ public class PostReplyFragment extends Fragment {
     EditText messageArea;
 
 
-    public PostReplyFragment(Context context) {
-		mContext = context;
+    public PostReplyFragment() {
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        setHasOptionsMenu(true);
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		menu.clear();
         inflater.inflate(R.menu.postreply_menu, menu);
 
         super.onCreateOptionsMenu(menu, inflater);
@@ -104,6 +104,7 @@ public class PostReplyFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.newpost, container, false);
+
         TextView replyHeader = (TextView)view.findViewById(R.id.newpost_header);
         messageArea = (EditText)view.findViewById(R.id.newpost_reply_textbox);
 
@@ -141,12 +142,13 @@ public class PostReplyFragment extends Fragment {
     @Override
     public void onAttach(Activity a) {
         super.onAttach(a);
-
+		mContext = a;
     }
 
-    @Override
+	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+		setHasOptionsMenu(true);
     }
 
 }

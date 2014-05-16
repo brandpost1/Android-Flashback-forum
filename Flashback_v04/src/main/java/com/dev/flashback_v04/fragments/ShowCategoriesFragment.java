@@ -2,10 +2,14 @@ package com.dev.flashback_v04.fragments;
 
 
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ListView;
 
 
@@ -35,7 +39,7 @@ public class ShowCategoriesFragment extends ListFragment {
         outState.putStringArrayList("CategoryNames", categorynames);
     }
 
-    @Override
+	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAdapter = new ShowCategoriesAdapter(getActivity());

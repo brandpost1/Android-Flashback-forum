@@ -15,13 +15,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.Toast;
 
-import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.asynctasks.special.NewThreadTask;
 import com.dev.flashback_v04.interfaces.Callback;
 
 import java.util.HashMap;

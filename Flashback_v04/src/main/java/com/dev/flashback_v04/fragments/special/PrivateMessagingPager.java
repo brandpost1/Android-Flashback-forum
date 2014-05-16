@@ -6,6 +6,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 
 import android.view.LayoutInflater;
@@ -25,10 +26,6 @@ public class PrivateMessagingPager extends Fragment {
     private PrivateMessagesPagingAdapter mPrivateMessagesPagingAdapter;
     private ViewPager mViewPager;
 
-    public PrivateMessagingPager() {
-
-    }
-
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
@@ -44,31 +41,17 @@ public class PrivateMessagingPager extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         View v = inflater.inflate(R.layout.messages_layout, null);
-
         mViewPager = (ViewPager) v.findViewById(R.id.viewpager);
         mViewPager.setAdapter(mPrivateMessagesPagingAdapter);
-        //mActivity.getSupportActionBar().setTitle("Meddelanden");
 
         return v;
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
     }
 
     @Override
     public void onPause() {
         mActivity.getSupportActionBar().setTitle("");
         super.onPause();
-    }
-
-    @Override
-    public void onDestroy() {
-
-        super.onDestroy();
     }
 
     private class PrivateMessagesPagingAdapter extends FragmentPagerAdapter {

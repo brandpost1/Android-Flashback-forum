@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.InputType;
 import android.text.Spannable;
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -249,16 +250,18 @@ public class ViewPMAdapter extends BaseAdapter {
 				message = (TextView)view.findViewById(R.id.post_text);
 				//message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
 				if(mMessageRows.get(position)[1] != null) {
-					Spannable smileymessage = ImageAdder.getSmiledText(mContext, mMessageRows.get(position)[1]);
+					Spannable smileymessage = ImageAdder.getStyledText(mContext, mMessageRows.get(position)[1]);
+					message.setMovementMethod(LinkMovementMethod.getInstance());
 					message.setText(smileymessage);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						message.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//message.setTextIsSelectable(true);
+					}
 					//message.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					message.setSingleLine(false);
+
 				}
 				break;
 			case POST_SPOILER:
@@ -268,14 +271,16 @@ public class ViewPMAdapter extends BaseAdapter {
 					spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
 				} else {
 					String text = (String)spoiler.getTag(R.id.SPOILER_MESSAGE);
-					Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+					Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
+					spoiler.setMovementMethod(LinkMovementMethod.getInstance());
 					spoiler.setText(smileyspoiler);
+
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						spoiler.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//spoiler.setTextIsSelectable(true);
+					}
 					//spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);
 				}
@@ -284,7 +289,7 @@ public class ViewPMAdapter extends BaseAdapter {
 					public void onClick(View view) {
 						if(showSpoiler[position] == false) {
 							String text = (String)view.getTag(R.id.SPOILER_MESSAGE);
-							Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+							Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
 							((TextView)view).setText(smileyspoiler);
 							showSpoiler[position] = true;
 						} else {
@@ -314,14 +319,14 @@ public class ViewPMAdapter extends BaseAdapter {
 			case POST_QUOTE_MESSAGE:
 				quote = (TextView)view.findViewById(R.id.post_quote_message_content);
 				if(mMessageRows.get(position)[1] != null) {
-					Spannable smileymessage = ImageAdder.getSmiledText(mContext, mMessageRows.get(position)[1]);
+					Spannable smileymessage = ImageAdder.getStyledText(mContext, mMessageRows.get(position)[1]);
 					quote.setText(smileymessage);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						quote.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//quote.setTextIsSelectable(true);
+					}
 					//quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					quote.setSingleLine(false);
 				}
@@ -333,14 +338,15 @@ public class ViewPMAdapter extends BaseAdapter {
 					spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
 				} else {
 					String text = (String)spoiler.getTag(R.id.QUOTE_SPOILER_MESSAGE);
-					Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+					Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
+					spoiler.setMovementMethod(LinkMovementMethod.getInstance());
 					spoiler.setText(smileyspoiler);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						spoiler.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//spoiler.setTextIsSelectable(true);
+					}
 					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);
 				}
@@ -349,7 +355,7 @@ public class ViewPMAdapter extends BaseAdapter {
 					public void onClick(View view) {
 						if(showSpoiler[position] == false) {
 							String text = (String)view.getTag(R.id.QUOTE_SPOILER_MESSAGE);
-							Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+							Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
 							((TextView)view).setText(smileyspoiler);
 							showSpoiler[position] = true;
 						} else {

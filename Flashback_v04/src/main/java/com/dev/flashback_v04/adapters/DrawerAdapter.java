@@ -59,7 +59,7 @@ public class DrawerAdapter extends BaseAdapter {
             mList.add(new DrawerItem("Item", "Aktuella ämnen", "", 1));
             mList.add(new DrawerItem("Item", "Nya ämnen", "", 2));
             mList.add(new DrawerItem("Item", "Nya inlägg", "", 3));
-            mList.add(new DrawerItem("Item", "(Sök)", "", 4));
+            mList.add(new DrawerItem("Item", "Sök", "", 4));
             mList.add(new DrawerItem("Divider", ""));
             mList.add(new DrawerItem("Item", "Inställningar", "", 9));
             mList.add(new DrawerItem("Item", "Logga in", "", 10));
@@ -71,7 +71,7 @@ public class DrawerAdapter extends BaseAdapter {
             mList.add(new DrawerItem("Item", "Aktuella ämnen", "", 1));
             mList.add(new DrawerItem("Item", "Nya ämnen", "", 2));
             mList.add(new DrawerItem("Item", "Nya inlägg", "", 3));
-            mList.add(new DrawerItem("Item", "(Sök)", "", 4));
+            mList.add(new DrawerItem("Item", "Sök", "", 4));
             mList.add(new DrawerItem("Divider", "KONTO"));
             mList.add(new DrawerItem("Item", "Mina inlägg", "", 5));
             mList.add(new DrawerItem("Item", "Mina Ämnen", "", 6));

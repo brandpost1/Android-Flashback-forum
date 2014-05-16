@@ -14,6 +14,7 @@ import android.support.v7.widget.PopupMenu;
 import android.text.InputType;
 import android.text.Spannable;
 
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,10 +28,7 @@ import android.widget.TextView;
 
 import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.asynctasks.PostsParserTask;
-import com.dev.flashback_v04.interfaces.OnTaskComplete;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
-import com.google.android.gms.plus.model.people.Person;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -40,7 +38,7 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2013-06-18.
  */
-public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
+public class ShowPostsAdapter extends BaseAdapter {
 
     static final int POST_HEADER = 0;
     static final int POST_MESSAGE = 1;
@@ -57,10 +55,8 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
     static final int BLOCKED_POST = 12;
 
 	private Context mContext;
-	private PostsParserTask mPostsParserTask;
 	private LayoutInflater mInflater;
 	ArrayList<Post> mPostArrayList;
-	String url;
 
     boolean[] checked = new boolean[10000];
     boolean[] showSpoiler = new boolean[10000];
@@ -74,16 +70,12 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
 
     public static HashMap<String, String[]> mPlusQuotes = new HashMap<String, String[]>();
 
-	public ShowPostsAdapter(Context context, PostsFragCallback callback, String thread_url) {
+	public ShowPostsAdapter(Context context) {
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		url = thread_url;
 		mContext = context;
-        mCallback = callback;
 		mUserPopups = new ArrayList<PopupMenu>();
 		rows = new ArrayList<String[]>();
 		mPostArrayList = new ArrayList<Post>();
-		mPostsParserTask = new PostsParserTask(this, context);
-		mPostsParserTask.execute(url);
 	}
 
 	@Override
@@ -328,15 +320,21 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 message = (TextView)view.findViewById(R.id.post_text);
                 //message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                 if(rows.get(position)[1] != null) {
-                    Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
+                    Spannable smileymessage = ImageAdder.getStyledText(mContext, rows.get(position)[1]);
+
+					message.setMovementMethod(LinkMovementMethod.getInstance());
                     message.setText(smileymessage);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						message.setTextIsSelectable(true);
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//message.setTextIsSelectable(true);
+					}
 					//message.setInputType(InputType.TYPE_NULL);
-					message.setSingleLine(false);
+					//message.setSingleLine(false);
+
+
+
                 }
                 break;
             case POST_SPOILER:
@@ -346,15 +344,15 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
                 } else {
                     String text = (String)spoiler.getTag(R.id.SPOILER_MESSAGE);
-                    Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+                    Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
                     spoiler.setText(smileyspoiler);
 					//spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						spoiler.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//spoiler.setTextIsSelectable(true);
+					}
 					spoiler.setSingleLine(false);
                 }
                 spoiler.setOnClickListener(new View.OnClickListener() {
@@ -362,7 +360,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     public void onClick(View view) {
                         if(showSpoiler[position] == false) {
                             String text = (String)view.getTag(R.id.SPOILER_MESSAGE);
-                            Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+                            Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
                             ((TextView)view).setText(smileyspoiler);
                             showSpoiler[position] = true;
                         } else {
@@ -392,15 +390,16 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
             case POST_QUOTE_MESSAGE:
                 quote = (TextView)view.findViewById(R.id.post_quote_message_content);
                 if(rows.get(position)[1] != null) {
-                    Spannable smileymessage = ImageAdder.getSmiledText(mContext, rows.get(position)[1]);
+                    Spannable smileymessage = ImageAdder.getStyledText(mContext, rows.get(position)[1]);
+					quote.setMovementMethod(LinkMovementMethod.getInstance());
                     quote.setText(smileymessage);
 					//quote.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						quote.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//quote.setTextIsSelectable(true);
+					}
 					quote.setSingleLine(false);
                 }
                 break;
@@ -411,14 +410,15 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
                 } else {
                     String text = (String)spoiler.getTag(R.id.QUOTE_SPOILER_MESSAGE);
-                    Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+                    Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
+					spoiler.setMovementMethod(LinkMovementMethod.getInstance());
                     spoiler.setText(smileyspoiler);
 
 					// Set selectable if API > 11.
 					//TODO: Fix for < 11
-					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-						spoiler.setTextIsSelectable(true);
-
+					if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						//spoiler.setTextIsSelectable(true);
+					}
 					spoiler.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 					spoiler.setSingleLine(false);
                 }
@@ -427,7 +427,7 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                     public void onClick(View view) {
                         if(showSpoiler[position] == false) {
                             String text = (String)view.getTag(R.id.QUOTE_SPOILER_MESSAGE);
-                            Spannable smileyspoiler = ImageAdder.getSmiledText(mContext, text);
+                            Spannable smileyspoiler = ImageAdder.getStyledText(mContext, text);
                             ((TextView)view).setText(smileyspoiler);
                             showSpoiler[position] = true;
                         } else {
@@ -555,7 +555,11 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
         return view;
     }
 
-	@Override
+	public void clearData() {
+		mPostArrayList.clear();
+		rows.clear();
+	}
+
 	public void updatePosts(ArrayList<Post> posts) {
 		mPostArrayList = posts;
 
@@ -618,6 +622,5 @@ public class ShowPostsAdapter extends BaseAdapter implements OnTaskComplete {
                 continue;
             }
         }
-		notifyDataSetChanged();
 	}
 }

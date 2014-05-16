@@ -14,7 +14,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.Post;
 import com.dev.flashback_v04.R;
@@ -29,33 +28,47 @@ import java.util.ArrayList;
  */
 public class ViewPMFragment extends ListFragment {
 
-	public class GetPMTask extends AsyncTask<String, String, ArrayList<Post>> {
+	public class GetPMTask extends AsyncTask<String, ArrayList<Post>, String> {
 
 		private Parser mParser;
-		private Callback mCallback;
+		private Callback<ArrayList<Post>> mCallback;
+		private Callback<ArrayList<Post>> progressUpdate;
 
-		public GetPMTask(Context mContext, Callback callback) {
+		public GetPMTask(Context mContext, Callback<ArrayList<Post>> callback) {
 			mParser = new Parser(mContext);
 			mCallback = callback;
+
+			progressUpdate = new Callback<ArrayList<Post>>() {
+				@Override
+				public void onTaskComplete(ArrayList<Post> data) {
+					publishProgress(data);
+				}
+			};
 		}
 
 		@Override
-		protected ArrayList<Post> doInBackground(String... strings) {
-			ArrayList<Post> result;
-			String url = strings[0];
-
-			result = mParser.getPrivateMessageContent(url);
-
-			return result;
-		}
-
-		@Override
-		protected void onPostExecute(ArrayList<Post> result) {
-			if(result.isEmpty()) {
+		protected void onProgressUpdate(ArrayList<Post>... result) {
+			super.onProgressUpdate(result);
+			if(result[0].isEmpty()) {
 				Toast.makeText(mContext, "Gå tillbaka och ladda om Inbox/Outbox och öppna meddelandet på nytt. Flashbacks PM-system krånglar troligtvis lite.", Toast.LENGTH_LONG).show();
 			} else {
-				mCallback.onTaskComplete(result);
+				mCallback.onTaskComplete(result[0]);
 			}
+		}
+
+		@Override
+		protected String doInBackground(String... strings) {
+			String errorMessage;
+			String url = strings[0];
+
+			errorMessage = mParser.getPrivateMessageContent(url, progressUpdate);
+
+			return errorMessage;
+		}
+
+		@Override
+		protected void onPostExecute(String result) {
+
 		}
 
 	}
@@ -66,6 +79,7 @@ public class ViewPMFragment extends ListFragment {
 	private String pmID;
 	private String from;
 	private String header;
+	private boolean messageLoaded;
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -89,6 +103,8 @@ public class ViewPMFragment extends ListFragment {
 			public void onTaskComplete(ArrayList<Post> data) {
 				pmAdapter.setData(data);
 				pmAdapter.notifyDataSetChanged();
+				messageLoaded = true;
+				((MainActivity)mContext).supportInvalidateOptionsMenu();
 			}
 		};
 		setListAdapter(pmAdapter);
@@ -100,7 +116,6 @@ public class ViewPMFragment extends ListFragment {
 		String url = getArguments().getString("Link");
 		GetPMTask task = new GetPMTask(mContext, mCallback);
 		task.execute(url);
-
 	}
 
 	@Override
@@ -118,8 +133,9 @@ public class ViewPMFragment extends ListFragment {
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-		inflater.inflate(R.menu.viewpmmenu, menu);
-
+		if(messageLoaded) {
+			inflater.inflate(R.menu.viewpmmenu, menu);
+		}
 		super.onCreateOptionsMenu(menu, inflater);
 	}
 

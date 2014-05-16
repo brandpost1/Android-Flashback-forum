@@ -123,10 +123,14 @@ public class UserPostsFragment extends ListFragment {
 
 			if(getArguments().getString("Search") != null) {
 				executeString = getArguments().getString("Search");
+				executeString = executeString + "&page=" + pageNumber;
+
 			} else {
 				if(threadId == null) {
+					// All posts by user
 					executeString = "https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&page=" + pageNumber;
 				} else {
+					// All posts by user in a particular thread
 					executeString = "https://www.flashback.org/find_posts_by_user.php?userid="+ userId +"&threadid="+ threadId +"&page=" + pageNumber;
 				}
 			}

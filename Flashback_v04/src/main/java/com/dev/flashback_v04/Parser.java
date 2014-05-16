@@ -21,6 +21,7 @@ import org.jsoup.select.NodeVisitor;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class Parser {
         ((MainActivity)mContext).runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(mContext, errormsg, Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext, errormsg, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -71,10 +72,10 @@ public class Parser {
         SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         int timeout;
         try {
-            String to = appPrefs.getString("connection_timeout", "3000");
+            String to = appPrefs.getString("connection_timeout", "5000");
             timeout = Integer.parseInt(to);
         } catch (Exception e) {
-            timeout = 3000;
+            timeout = 5000;
             e.printStackTrace();
         }
 
@@ -82,10 +83,10 @@ public class Parser {
             // Check for cookie
             if(!cookie.isEmpty()) {
                 // Connect with cookie
-                currentSite = LoginHandler.cookieConnect(url, cookie, mContext);
+                currentSite = LoginHandler.cookieConnect(url, cookie, mContext, timeout);
             } else {
                 // Connect without cookie
-                currentSite = LoginHandler.basicConnect(url);
+                currentSite = LoginHandler.basicConnect(url, timeout);
             }
             if(currentSite == null) {
                 throw new NullPointerException("Failed to parse site");
@@ -100,11 +101,11 @@ public class Parser {
             Connect("https://www.flashback.org/profile.php?do=editoptions");
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         }
 
@@ -137,7 +138,7 @@ public class Parser {
         } catch(NullPointerException e) {
             e.printStackTrace();
             return false;
-            //showErrorMsg(e.getMessage());
+            //
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -167,30 +168,27 @@ public class Parser {
      * Retrieve all of the forums within a category
      * @param url
      * @param mProgressUpdate
-     * @return
+     * @return null if OK. Else a String with an error-message.
      */
-	public boolean getCategoryContent(String url, Callback<HashMap<String, String>> mProgressUpdate) {
+	public String getCategoryContent(String url, Callback<HashMap<String, String>> mProgressUpdate) {
         HashMap<String, String> map = new HashMap<String, String>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return false;
+            return "Error";
         } catch (IOException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return false;
+			if(e instanceof SocketTimeoutException) {
+				return "Connection timed out.";
+			}
+            return "Error";
         }
 
 		Elements forums = currentSite.select("tr td.alt1Active");
 
-		String forumName = null;
-		String forumLink = null;
-		String forumInfo = null;
-
-		String categoryName = null;
-		categoryName = currentSite.select(".list-forum-title").text();
+		String forumName;
+		String forumLink;
+		String forumInfo;
 
 		for(Element f : forums) {
             map = new HashMap<String, String>();
@@ -211,7 +209,7 @@ public class Parser {
                 mProgressUpdate.onTaskComplete(map);
 			}
 		}
-        return (map.size() > 0) ? true : false;
+        return null;
 	}
 
     /**
@@ -224,7 +222,6 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
             return 1;
         } catch (IOException e) {
             e.printStackTrace();
@@ -256,18 +253,17 @@ public class Parser {
      * @return
      * @throws Exception
      */
-	public boolean getForumContents(String url, Callback mProgressUpdate) throws Exception {
+	public String getForumContents(String url, Callback mProgressUpdate) throws Exception {
         HashMap<String, String> map = new HashMap<String, String>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return false;
+            return "Error";
         } catch (IOException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return false;
+			if(e instanceof SocketTimeoutException) {
+				return "Connection timed out.";
+			}
+            return "Error";
         }
 
 		String name;
@@ -280,16 +276,6 @@ public class Parser {
         String lastPost;
 		String isBold;
         Boolean locked;
-		// Get all non-sticky threads, name and href
-		// #threadslist tr:not(.tr_sticky) td.alt1.threadslistrow div a[id^=thread]
-		// Get all threads, name and href
-		// #threadslist tr td.alt1.threadslistrow div a[id^=thread]
-		// Get last page
-		// #threadslist tr td.alt1.threadslistrow div a[class^=thread-pagenav-lastpage]
-		// Get author
-		// #threadslist tr td.alt1.threadslistrow div.smallfont
-		// Number of views
-		// #threadslist tr td.alt2.td_views
 
 		Elements threads = currentSite.select("#threadslist tr:not(:has(td.alt1.threadslist-announcement)):has(td.alt1.td_status):not(.tr_sticky)");
         Elements sticky = currentSite.select("#threadslist tr.tr_sticky");
@@ -389,7 +375,162 @@ public class Parser {
             mProgressUpdate.onTaskComplete(map);
 
         }
-		return (map.size() > 0) ? true : false;
+		return null;
+	}
+
+	public String getSubforumsAndThreads(String url, Callback forumProgress, Callback threadProgress) {
+		HashMap<String, String> map = new HashMap<String, String>();
+		try {
+			Connect(url);
+		} catch(NullPointerException e) {
+			return "Error";
+		} catch (IOException e) {
+			if(e instanceof SocketTimeoutException) {
+				return "Connection timed out.";
+			}
+			return "Error";
+		}
+
+		// Get any forums first
+
+		Elements forums = currentSite.select("tr td.alt1Active");
+
+		String forumName;
+		String forumLink;
+		String forumInfo;
+
+		for(Element f : forums) {
+			map = new HashMap<String, String>();
+			Elements n;
+
+			forumName = f.select("a").text();
+			forumLink = f.select("a[href]").attr("abs:href");
+			forumInfo = f.select(".forum-summary").text();
+
+			n = f.select(":has(.icon-subforum");
+			if(n.size() == 0) {
+
+				// Put Key-value pairs in map
+				map.put("ForumName", forumName);
+				map.put("ForumLink", forumLink);
+				map.put("ForumInfo", forumInfo);
+				// Return it
+				forumProgress.onTaskComplete(map);
+			}
+		}
+
+		// Get threads second
+
+		String name;
+		String link;
+		String views;
+		String author;
+		String numReplies;
+		String pages;
+		String lastPage;
+		String lastPost;
+		String isBold;
+		Boolean locked;
+
+		Elements threads = currentSite.select("#threadslist tr:not(:has(td.alt1.threadslist-announcement)):has(td.alt1.td_status):not(.tr_sticky)");
+		Elements sticky = currentSite.select("#threadslist tr.tr_sticky");
+
+		for(Element st : sticky) {
+			map = new java.util.HashMap<String, String>();
+			//name = st.select("td.alt1.td_title a[id^=thread_title]").text();
+			name = st.select("td.alt1.td_title div strong a[id^=thread_title]").text();
+			if(name.isEmpty()) {
+				// Not bold text
+				name = st.select("td.alt1.td_title div a[id^=thread_title]").text();
+				isBold = "false";
+			} else {
+				isBold = "true";
+			}
+			link = st.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
+			author = st.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
+			views = st.select("td.alt2.td_views").text();
+			numReplies = st.select("td.alt1.td_replies").text();
+			pages = st.select("td.alt1.td_title a.thread-pagenav-lastpage").text();
+			lastPost = st.select("td.alt2.td_last_post").text();
+
+			if(st.select("td.alt1.td_status a.clear.icon-thread-lock").isEmpty()) {
+				locked = false;
+			} else {
+				locked = true;
+			}
+
+			if(!pages.equals("")) {
+				pages = pages.substring(1, pages.length()-1);
+			} else {
+				pages = "1";
+			}
+			lastPage = link.concat("p"+pages);
+
+			map.put("ThreadAuthor", author);
+			map.put("ThreadName", name);
+			map.put("ThreadLink", link);
+			map.put("ThreadSticky", "true");
+			map.put("ThreadLocked", Boolean.toString(locked));
+			map.put("ThreadNumReplies", numReplies);
+			map.put("ThreadNumViews", views);
+			map.put("LastPost", lastPost);
+			map.put("ThreadLink", link);
+			map.put("ThreadNumPages", pages);
+			map.put("LastPageUrl", lastPage);
+			map.put("BoldTitle", isBold);
+
+			threadProgress.onTaskComplete(map);
+
+		}
+
+		for(Element e : threads) {
+			map = new java.util.HashMap<String, String>();
+			//name = e.select("td.alt1.td_title a[id^=thread_title]").text();
+			name = e.select("td.alt1.td_title div strong a[id^=thread_title]").text();
+			if(name.isEmpty()) {
+				// Not bold text
+				name = e.select("td.alt1.td_title div a[id^=thread_title]").text();
+				isBold = "false";
+			} else {
+				isBold = "true";
+			}
+			link = e.select("td.alt1.td_title a[id^=thread_title]").attr("abs:href");
+			author = e.select("td.alt1.td_title span[onclick^=window.open('/u]").text();
+			views = e.select("td.alt2.td_views").text();
+			numReplies = e.select("td.alt1.td_replies").text();
+			pages = e.select("td.alt1.td_title a.thread-pagenav-lastpage").text();
+			lastPost = e.select("td.alt2.td_last_post").text();
+
+			if(e.select("td.alt1.td_status a.clear.icon-thread-lock").isEmpty()) {
+				locked = false;
+			} else {
+				locked = true;
+			}
+
+			if(!pages.equals("")) {
+				pages = pages.substring(1, pages.length()-1);
+			} else {
+				pages = "1";
+			}
+			lastPage = link.concat("p"+pages);
+
+			map.put("ThreadAuthor", author);
+			map.put("ThreadName", name);
+			map.put("ThreadLink", link);
+			map.put("ThreadSticky", "false");
+			map.put("ThreadLocked", Boolean.toString(locked));
+			map.put("ThreadNumReplies", numReplies);
+			map.put("ThreadNumViews", views);
+			map.put("LastPost", lastPost);
+			map.put("ThreadLink", link);
+			map.put("ThreadNumPages", pages);
+			map.put("LastPageUrl", lastPage);
+			map.put("BoldTitle", isBold);
+
+			threadProgress.onTaskComplete(map);
+		}
+
+		return null;
 	}
 
 	/**
@@ -445,12 +586,9 @@ public class Parser {
         try {
             Connect(url);
         } catch(NullPointerException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
             return 1;
         } catch (IOException e) {
-            e.printStackTrace();
-            showErrorMsg("Failed to load number of pages.");
+            showErrorMsg("Kunde inte hämta korrekt antal sidor. Visar första.");
             return 1;
         }
         int number;
@@ -476,18 +614,19 @@ public class Parser {
      * @param url
      * @return
      */
-	public ArrayList<Post> getThreadContent(String url) {
+	public String getThreadContent(String url, Callback<ArrayList<Post>> updatePosts) {
+		//long startTime = System.nanoTime();
+
         ArrayList<Post> postArrayList = new ArrayList<Post>();
         try {
             Connect(url);
         } catch(NullPointerException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return postArrayList;
+            return "Error";
         } catch (IOException e) {
-            e.printStackTrace();
-            showErrorMsg(e.getMessage());
-            return postArrayList;
+			if(e instanceof SocketTimeoutException) {
+				return "Connection timed out.";
+			}
+            return "IOException";
         }
         String author;
 		String numposts;
@@ -556,19 +695,19 @@ public class Parser {
 				newPost.setThreadId(threadId);
 				message = post.select("div.post_message");
 
+
+
 				// Links in posts.
 				// div#posts div[id^=edit] td.alt1.post-right div.post_message a
 				for (int i = 0; i < post.select("td.alt1.post-right div.post_message a").size(); i++) {
 					String text = post.select("td.alt1.post-right div.post_message a").get(i).attr("href");
-					if (!text.contains("flashback.org") && text.startsWith("/leave.php") && !(text.length() < 14)) {
+					if (!text.contains("flashback.org") && text.startsWith("/leave.php") && !(text.length() < 14))
 						try {
 							text = text.substring(13);
 						} catch (IndexOutOfBoundsException e) {
 							e.printStackTrace();
 							text = "[FB-ParseError] Please report bug in official thread";
 						}
-
-					}
 
 					try {
 						text = URLDecoder.decode(text, "UTF-8");
@@ -597,6 +736,11 @@ public class Parser {
 				message.select("div[style=margin:20px; margin-top:5px] > div:first-child").remove();
 				// Surround code with own tags
 				message.select("div.alt2.post-bbcode-php").before("{phptag}").after("{/phptag}");
+
+				// Replace text-styling tags
+				message.select("b").before("[b]").after("[/b]");
+				message.select("i").before("[i]").after("[/i]");
+				message.select("u").before("[u]").after("[/u]");
 
 				// Remove codetags within spoilers
 				message.select("div.alt2.post-bbcode-spoiler div[style=margin:5px 10px;]").before("[SPOILAD KOD]<br>");
@@ -806,6 +950,9 @@ public class Parser {
 								msg = msg.replace(">", "&gt;");
 								msg = Jsoup.parse(msg).text();
 								msg = msg.replaceAll("\\s*\\[newline\\]\\s*", "\n");
+								msg = msg.replaceAll("\\[b\\]\\s*", "[b]");
+								msg = msg.replaceAll("\\[i\\]\\s*", "[i]");
+								msg = msg.replaceAll("\\[u\\]\\s*", "[u]");
 								msg = msg.replace("&lt;", "<");
 								msg = msg.replace("&gt;", ">");
 								msg = msg.replace("[SPACE]", " ");
@@ -890,8 +1037,15 @@ public class Parser {
 			}
             postArrayList.add(newPost);
 		}
+		//long endTime = System.nanoTime();
+		//long duration = endTime - startTime;
+		//showErrorMsg("Executiontime: "+ TimeUnit.MILLISECONDS.convert(duration, TimeUnit.NANOSECONDS));
 
-        return postArrayList;
+		// Return all posts
+		updatePosts.onTaskComplete(postArrayList);
+
+		// No errors
+        return null;
 	}
 
     /**
@@ -907,11 +1061,9 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
             return false;
         }
 
@@ -929,16 +1081,17 @@ public class Parser {
 
         // Loopa igenom de fyra
         for(int i = 0; i < categories.size(); i++) {
+			HashMap<String, String> newItem = new HashMap<String, String>();
 
             categoryName = categories.get(i).select("tr:eq(0) td:eq(1)").text();
 
-            HashMap<String, String> newItem = new HashMap<String, String>();
             newItem.put("Type", Integer.toString(CurrentThreadsAdapter.ITEM_HEADER));
             newItem.put("Headline", categoryName);
 
             mProgressUpdate.onTaskComplete(newItem);
 
             for(int j = 0; j < categories.get(i).select("tr:not(:first-child)").size(); j++) {
+				HashMap<String, String> newThread = new HashMap<String, String>();
 
                 threadLink = categories.get(i).select("tr:not(:first-child) td:eq(1) a:first-child").get(j).attr("abs:href");
                 threadName = categories.get(i).select("tr:not(:first-child) td:eq(1) a:first-child").get(j).text();
@@ -947,7 +1100,6 @@ public class Parser {
                 views  = categories.get(i).select("tr:not(:first-child) td:eq(4)").get(j).text();
                 replies = categories.get(i).select("tr:not(:first-child) td:eq(5)").get(j).text();
 
-                HashMap<String, String> newThread = new HashMap<String, String>();
                 newThread.put("Type", Integer.toString(CurrentThreadsAdapter.ITEM_ROW));
                 newThread.put("Headline", threadName);
                 newThread.put("Readers", readers);
@@ -975,11 +1127,11 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         }
 
@@ -1027,11 +1179,11 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         }
 
@@ -1075,11 +1227,11 @@ public class Parser {
 			Connect(url);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		} catch (IOException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		}
 
@@ -1143,11 +1295,11 @@ public class Parser {
 			Connect(url);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		} catch (IOException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		}
 
@@ -1214,11 +1366,11 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return 1;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return 1;
         }
 
@@ -1260,11 +1412,11 @@ public class Parser {
             Connect(url);
         } catch(NullPointerException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            showErrorMsg(e.getMessage());
+
             return false;
         }
 
@@ -1321,11 +1473,11 @@ public class Parser {
 			Connect(url);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return numPages;
 		} catch (IOException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return numPages;
 		}
 
@@ -1358,11 +1510,11 @@ public class Parser {
 			Connect(url);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		} catch (IOException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
+
 			return false;
 		}
 
@@ -1409,8 +1561,8 @@ public class Parser {
 		return true;
 	}
 
-	public ArrayList<Post> getPrivateMessageContent(String url) {
-		return getThreadContent(url);
+	public String getPrivateMessageContent(String url, Callback<ArrayList<Post>> pmUpdate) {
+		return getThreadContent(url, pmUpdate);
 	}
 
 	public String getNewPrivateMessageToken() {
@@ -1420,11 +1572,9 @@ public class Parser {
 				Connect("https://www.flashback.org/private.php?do=newpm");
 			} catch (NullPointerException e) {
 				e.printStackTrace();
-				showErrorMsg(e.getMessage());
 				return "";
 			} catch (IOException e) {
 				e.printStackTrace();
-				showErrorMsg(e.getMessage());
 				return "";
 			}
 
@@ -1441,11 +1591,9 @@ public class Parser {
 			Connect(url);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
 			return fields;
 		} catch (IOException e) {
 			e.printStackTrace();
-			showErrorMsg(e.getMessage());
 			return fields;
 		}
 

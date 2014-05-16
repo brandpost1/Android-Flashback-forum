@@ -8,7 +8,6 @@ import android.widget.Toast;
 
 import com.dev.flashback_v04.LoginHandler;
 import com.dev.flashback_v04.activities.MainActivity;
-import com.dev.flashback_v04.interfaces.RedirectCallback;
 
 import java.io.IOException;
 
@@ -16,8 +15,6 @@ import java.io.IOException;
  * Created by Viktor on 2014-02-27.
  */
 public class NewThreadTask extends AsyncTask<String, String, Boolean> {
-
-    RedirectCallback callback;
 
     String forumId;
     String forumLink;
@@ -37,12 +34,7 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
 
         mContext = context;
         mDialog = new ProgressDialog(mContext);
-        callback = new RedirectCallback() {
-            @Override
-            public void setRedirect(String url) {
-                redirectLink = url;
-            }
-        };
+
     }
 
     @Override
@@ -63,7 +55,7 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
                 return success;
             }
             try {
-                success = LoginHandler.postNewThread(callback, forumId, threadHeader, threadMessage, mContext);
+                success = LoginHandler.postNewThread(forumId, threadHeader, threadMessage, mContext);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -95,7 +87,7 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
             args.putInt("NumPages", 1);
             Toast.makeText(mContext, "Tråd skapad!", Toast.LENGTH_SHORT).show();
 
-            ((MainActivity)mContext).updateForum(args);
+            ((MainActivity)mContext).updateForum(args, false);
         } else {
             Toast.makeText(mContext, "Något gick fel..", Toast.LENGTH_SHORT).show();
 
