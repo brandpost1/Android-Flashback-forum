@@ -6,12 +6,9 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -19,77 +16,64 @@ import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.interfaces.Callback;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Created by Viktor on 2014-03-12.
  */
 public class MainPager extends Fragment {
 
 	// Retrieves the number of pages for the PagerAdapter
-	public class GetSizeTask extends AsyncTask<String, String, Integer[]> {
+	public class GetSizeTask extends AsyncTask<String, String, Map<String, Integer>> {
 
 		private final ProgressDialog dialog;
 		private Parser mParser;
 		private Callback mCallback;
-		private boolean fixedNumPages;
 
-		public GetSizeTask(Activity mActivity, Callback callback, boolean fixedNumPages) {
+		public GetSizeTask(Callback callback) {
 			mParser = new Parser(mActivity);
 			mCallback = callback;
 			dialog = new ProgressDialog(mActivity);
 			dialog.setCancelable(false);
-			this.fixedNumPages = fixedNumPages;
-		}
-
-		@Override
-		protected Integer[] doInBackground(String... strings) {
-			Integer[] resultArr = new Integer[3];
-			int result = 1;
-			int threadId = 0;
-			int threadPos = 0;
-			int forumType = Integer.parseInt(strings[0]);
-			String url = strings[1];
-			switch (forumType) {
-				case 0:
-					result = 1;
-					break;
-				case 1:
-					// Open category
-					result = 15;
-					break;
-				case 2:
-					// Open forum
-					result = mParser.getForumNumPages(url);
-					break;
-				case 3:
-					// Open thread
-					result = mParser.getThreadNumPages(url);
-					threadId = mParser.getThreadId(url);
-					threadPos = mParser.getThreadPosition(url);
-					break;
-			}
-			resultArr[0] = result;
-			resultArr[1] = threadId;
-			resultArr[2] = threadPos;
-			return resultArr;
 		}
 
 		@Override
 		protected void onPreExecute() {
 			dialog.setMessage("Laddar..");
-			if(!fixedNumPages)
-				dialog.show();
+			dialog.show();
 			super.onPreExecute();
 		}
 
 		@Override
-		protected void onPostExecute(Integer[] result) {
-			if(dialog.isShowing()) {
-				try {
-					dialog.dismiss();
-				} catch (Exception e) {
+		protected Map<String, Integer> doInBackground(String... strings) {
+			Map<String, Integer> result = new HashMap<String, Integer>();
 
-				}
+			switch (fragmentType) {
+				case 2:
+					// Open forum
+					result.put("PageCount", mParser.getForumNumPages(url));
+					break;
+				case 3:
+					// Open thread
+					result.put("PageCount", mParser.getThreadNumPages(url));
+					// Only get pagenumber if needed.
+					if(currentPage == 0)
+						result.put("PageNumber", mParser.getThreadPosition(url));
+					result.put("ThreadId", mParser.getThreadId(url));
+					break;
 			}
+
+			return result;
+		}
+
+		@Override
+		protected void onPostExecute(Map<String, Integer> result) {
+            try {
+                dialog.dismiss();
+            } catch (Exception e) {
+
+            }
 			mCallback.onTaskComplete(result);
 		}
 
@@ -99,12 +83,12 @@ public class MainPager extends Fragment {
 	private Activity mActivity;
 	private Callback mCallback;
 	private MainPagerAdapter mPagerAdapter;
-	private GetSizeTask mGetSizeTask;
 	private Bundle mPagerBundle;
 
-	int numPages;
-	int pageNumber;
+	int numberOfPages;
+	int currentPage;
 	int fragmentType;
+	String url;
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -115,78 +99,87 @@ public class MainPager extends Fragment {
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
-		outState.putInt("NumPages", numPages);
-		outState.putInt("Page", pageNumber);
+		outState.putInt("NumberOfPages", numberOfPages);
+		outState.putInt("CurrentPage", currentPage);
 		outState.putInt("FragmentType", fragmentType);
-
-		switch(mPagerBundle.getInt("FragmentType")) {
-			case 0:
-				break;
-			case 1:
-				outState.putStringArrayList("Categories", mPagerBundle.getStringArrayList("Categories"));
-				outState.putStringArrayList("CategoryNames", mPagerBundle.getStringArrayList("CategoryNames"));
-				break;
-			case 2:
-				outState.putString("ForumName", mPagerBundle.getString("ForumName"));
-				outState.putString("Url", mPagerBundle.getString("Url"));
-				break;
-			case 3:
-				outState.putString("ThreadName", mPagerBundle.getString("ThreadName"));
-				outState.putString("Url", mPagerBundle.getString("Url"));
-				break;
-		}
-
+		outState.putString("Url", url);
 	}
+
+	// https://www.flashback.org/forumdisplay.php?f=17&daysprune=-1
+	// https://www.flashback.org/showthread.php?t=1776145&pp=20&page=23
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setHasOptionsMenu(true);
-		mPagerBundle = getArguments();
+		mPagerBundle = new Bundle();
 		mPagerAdapter = new MainPagerAdapter(getChildFragmentManager());
 
+
 		if(savedInstanceState == null) {
-			pageNumber = mPagerBundle.getInt("Position");
-			fragmentType = mPagerBundle.getInt("FragmentType");
-			mCallback = new Callback<Integer[]>() {
-				@Override
-				public void onTaskComplete(Integer[] data) {
-					numPages = data[0];
-					mPagerBundle.putInt("NumPages", data[0]);
-					if(mPagerBundle.getInt("FragmentType") == 3)
-						mPagerBundle.putInt("ThreadId", data[1]);
-					// if opening a thread and pageNumber equals -1, then we don't know the pagenumber beforehand. Ex. https://www.flashback.org/p48110027
-					if(mPagerBundle.getInt("Position") == -1 && mPagerBundle.getInt("FragmentType") == 3) {
-						pageNumber = data[2];
-						mPagerBundle.putInt("Position", data[2]);
-						String newUrl = "https://www.flashback.org/t" + data[1];
-						mPagerBundle.putString("Url", newUrl);
-					}
-					// Set the current page to be the last page in the thread if this is the case. Just call openThread with -2 as position.
-					if(mPagerBundle.getInt("Position") == -2 && mPagerBundle.getInt("FragmentType") == 3) {
-						pageNumber = data[0];
-						mPagerBundle.putInt("Position", data[0]);
-					}
-					mPagerAdapter.setData(mPagerBundle);
-					mPagerAdapter.notifyDataSetChanged();
-					mViewPager.setCurrentItem(mPagerBundle.getInt("Position")-1);
+			if (getArguments().getInt("NumberOfPages") == 0) {
+				// First get what we do have from the arguments
+				fragmentType = getArguments().getInt("FragmentType");
+				url = getArguments().getString("Url");
+				currentPage = getArguments().getInt("CurrentPage");
+
+				if(fragmentType == 2) {
+					int index = getArguments().getString("Url").indexOf("/f") + 2;
+					String forum_id = getArguments().getString("Url").substring(index);
+					url = getArguments().getString("Url");
+					url = "https://www.flashback.org/forumdisplay.php?daysprune=-1&f="+ forum_id +"";
 				}
-			};
-			String fragmentType = String.valueOf(mPagerBundle.getInt("FragmentType"));
-			String url = mPagerBundle.getString("Url");
-			boolean fixedNumPages = false;
 
-			// True for initial view and the following view if a category is clicked
-			if(mPagerBundle.getInt("NumPages") != 0) {
-				fixedNumPages = true;
+				// We don't know the number of pages for the ViewPager. So we have to get that info.
+				// Create a callback which will return the data to us
+				Callback sizeCallback = new Callback<Map<String, Integer>>() {
+					@Override
+					public void onTaskComplete(Map<String, Integer> data) {
+						int numPages = data.get("PageCount");
+						numberOfPages = numPages;
+
+						// We might not have a correct pagenumber, if currentPage == -1. Let's check if one is returned to us!
+						if(currentPage == 0 && data.get("PageNumber") != null) {
+							currentPage = data.get("PageNumber");
+							if(fragmentType == 3 && data.get("ThreadId") != null) {
+								int threadId;
+								threadId = data.get("ThreadId");
+								url = "https://www.flashback.org/showthread.php?t="+ threadId;
+							}
+						}
+
+						mPagerAdapter.setData(numPages, fragmentType);
+						mPagerAdapter.notifyDataSetChanged();
+						if(data.get("PageNumber") != null) {
+							mViewPager.setCurrentItem(data.get("PageNumber") - 1, true);
+						} else {
+							mViewPager.setCurrentItem(currentPage - 1, true);
+						}
+					}
+				};
+
+				// Start asynctask which will get the info and return it via the callback.
+				GetSizeTask getSizeTask = new GetSizeTask(sizeCallback);
+				getSizeTask.execute();
+			} else {
+				// We know the number of pages to use in the ViewPager. We don't need to fetch it somewhere else.
+				numberOfPages = getArguments().getInt("NumberOfPages");
+				fragmentType = getArguments().getInt("FragmentType");
+				currentPage = getArguments().getInt("CurrentPage");
+				if(fragmentType == 3) {
+					// Rewrite thread url of this form: https://www.flashback.org/t2389893
+					int index = getArguments().getString("Url").indexOf("/t") + 2;
+					String thread_id = getArguments().getString("Url").substring(index);
+					url = "https://www.flashback.org/showthread.php?t="+ thread_id;
+				} else {
+					url = getArguments().getString("Url");
+				}
 			}
-
-			mGetSizeTask = new GetSizeTask(mActivity, mCallback, fixedNumPages);
-			mGetSizeTask.execute(fragmentType, url);
 		} else {
-			numPages = savedInstanceState.getInt("NumPages");
-			pageNumber = savedInstanceState.getInt("Page");
+			numberOfPages = savedInstanceState.getInt("NumberOfPages");
+			currentPage = savedInstanceState.getInt("CurrentPage");
 			fragmentType = savedInstanceState.getInt("FragmentType");
+			url = savedInstanceState.getString("Url");
 		}
 	}
 
@@ -194,25 +187,31 @@ public class MainPager extends Fragment {
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		View v = inflater.inflate(R.layout.wrapper_layout, null);
 		mViewPager = (ViewPager)v.findViewById(R.id.viewpager);
-
-		if(savedInstanceState != null) {
-			mPagerAdapter.setData(savedInstanceState);
-			mPagerAdapter.notifyDataSetChanged();
-
-			mViewPager.setCurrentItem(savedInstanceState.getInt("Position"));
-		}
 		mViewPager.setAdapter(mPagerAdapter);
+
+		if(savedInstanceState == null) {
+			if(numberOfPages != 0) {
+				mPagerAdapter.setData(numberOfPages, fragmentType);
+				mPagerAdapter.notifyDataSetChanged();
+				mViewPager.setCurrentItem(currentPage - 1, true);
+			}
+		} else {
+			mPagerAdapter.setData(numberOfPages, fragmentType);
+			mPagerAdapter.notifyDataSetChanged();
+			mViewPager.setCurrentItem(currentPage - 1, true);
+		}
+
 
 
 		mViewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
 			@Override
 			public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-				pageNumber = position;
+				currentPage = position;
 			}
 
 			@Override
 			public void onPageSelected(int position) {
-				pageNumber = position;
+				currentPage = position;
 			}
 
 			@Override
@@ -228,16 +227,14 @@ public class MainPager extends Fragment {
 
 		int NUM_PAGES = 0;
 		int FRAG_TYPE;
-		Bundle mData;
 
 		public MainPagerAdapter(FragmentManager fm) {
 			super(fm);
 		}
 
-		public void setData(Bundle data) {
-			NUM_PAGES = data.getInt("NumPages");
-			FRAG_TYPE = data.getInt("FragmentType");
-			mData = data;
+		public void setData(int numpages, int fragtype) {
+			NUM_PAGES = numpages;
+			FRAG_TYPE = fragtype;
 		}
 
 		@Override
@@ -252,28 +249,28 @@ public class MainPager extends Fragment {
 				case 1:
 					Bundle forumargs = new Bundle();
 					forumargs.putInt("index", index);
-					forumargs.putStringArrayList("Categories", mData.getStringArrayList("Categories"));
-					forumargs.putStringArrayList("CategoryNames", mData.getStringArrayList("CategoryNames"));
+					forumargs.putStringArrayList("Categories", getArguments().getStringArrayList("Categories"));
+					forumargs.putStringArrayList("CategoryNames", getArguments().getStringArrayList("CategoryNames"));
 					ShowForumsFragment forumsFragment = new ShowForumsFragment();
 					forumsFragment.setArguments(forumargs);
 					return forumsFragment;
 				case 2:
 					Bundle threadsargs = new Bundle();
 					threadsargs.putInt("index", index);
-					threadsargs.putInt("NumPages", mData.getInt("NumPages"));
-					threadsargs.putString("ForumName", mData.getString("ForumName"));
-					threadsargs.putString("Url", mData.getString("Url"));
+					threadsargs.putInt("NumberOfPages", NUM_PAGES);
+					threadsargs.putString("ForumName", getArguments().getString("ForumName"));
+					threadsargs.putString("Url", url);
 					ShowThreadsFragment threadsFragment = new ShowThreadsFragment();
 					threadsFragment.setArguments(threadsargs);
 					return threadsFragment;
 				case 3:
 					Bundle postsargs = new Bundle();
 					postsargs.putInt("index", index);
-					postsargs.putString("Url", mData.getString("Url"));
-					postsargs.putInt("NumPages", mData.getInt("NumPages"));
-					postsargs.putString("ThreadName", mData.getString("ThreadName"));
-					postsargs.putInt("ThreadId", mData.getInt("ThreadId"));
-					postsargs.putInt("ThreadPosition", mData.getInt("Position"));
+					postsargs.putString("Url", url);
+					postsargs.putInt("NumberOfPages", NUM_PAGES);
+					postsargs.putString("ThreadName", getArguments().getString("ThreadName"));
+					postsargs.putInt("ThreadId", getArguments().getInt("ThreadId"));
+					postsargs.putInt("ThreadPosition", getArguments().getInt("Position"));
 					ShowPostsFragment postsFragment = new ShowPostsFragment();
 					postsFragment.setArguments(postsargs);
 					return postsFragment;

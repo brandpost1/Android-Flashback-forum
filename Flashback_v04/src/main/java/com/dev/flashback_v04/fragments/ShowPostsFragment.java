@@ -54,7 +54,7 @@ import java.util.HashMap;
 /**
  * Created by Viktor on 2013-06-25.
  */
-public class ShowPostsFragment extends ListFragment implements PostsFragCallback<Bundle> {
+public class ShowPostsFragment extends ListFragment {
 
 	public class PostsParserTask extends AsyncTask<String, ArrayList<Post>, String> {
 
@@ -62,6 +62,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 		private Callback<ArrayList<Post>> postsFetched;
 		private Callback<ArrayList<Post>> postsUpdate;
 		private ErrorHandler errorHandler;
+		private String errormsg;
 
 		public PostsParserTask(Context context, Callback taskComplete, ErrorHandler handler) {
 			mParser = new Parser(context);
@@ -84,9 +85,10 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
 		@Override
 		protected String doInBackground(String... strings) {
-			String errormsg = null;
 			try {
-				errormsg = mParser.getThreadContent(strings[0], postsUpdate);
+				System.out.println("Fetching page! - " + thread_url_withpagenr);
+				errormsg = mParser.getThreadContent(thread_url_withpagenr, postsUpdate);
+
 			} catch (IllegalStateException e) {
 				e.printStackTrace();
 			}
@@ -97,7 +99,6 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 		protected void onPostExecute(String result) {
 			super.onPostExecute(result);
 			if(result != null) {
-				hasErrors = true;
 				errorHandler.handleError(result);
 			} else {
 				hasErrors = false;
@@ -108,8 +109,10 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 
 	private boolean hasErrors;
 	private Callback<ArrayList<Post>> postsFetched;
+	private PostsFragCallback<Bundle> postsFragCallback;
 	private ErrorHandler mErrorHandler;
 	private String errorMessage;
+	private RelativeLayout mErrorLayout;
 
 	private PostsParserTask postsParserTask;
 	private ShowPostsAdapter mAdapter;
@@ -118,16 +121,19 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 	private int numPages;
 	private String thread_url = null;
 	private String thread_url_withpagenr = null;
+	private String base_url = null;
+	private int thread_id;
+	private int POSTS_PER_PAGE = 12;
 
 	private ShareActionProvider mShare;
 
-	private Activity mActivity;
+	private MainActivity mActivity;
 
 
 	@Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        mActivity = activity;
+        mActivity = (MainActivity)activity;
     }
 
 	@Override
@@ -164,10 +170,10 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 		searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
 			@Override
 			public boolean onQueryTextSubmit(String searchString) {
-				int threadId = getArguments().getInt("ThreadId");
+				int threadId = thread_id;
 				String query = "https://www.flashback.org/sok/"+ searchString +"?sp=1&t=" + threadId;
 				query = query.replace(" ", "+");
-				((MainActivity)mActivity).searchThread(query);
+				(mActivity).searchThread(query);
 				return true;
 			}
 
@@ -189,30 +195,51 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
     @Override
 	public void onCreate(Bundle savedInstanceState) {
 		setHasOptionsMenu(true);
+
+		SharedPreferences preferences = mActivity.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+		POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
 		thread_url = getArguments().getString("Url");
 		selected_page = getArguments().getInt("index") + 1;
 		selected_page_base = getArguments().getInt("index");
-		thread_url_withpagenr = thread_url.concat("p"+selected_page);
+		thread_url_withpagenr = thread_url.concat("&pp="+ POSTS_PER_PAGE +"&page=" + selected_page);
+
+		int index = thread_url.indexOf("t=") + 2;
+		thread_id = Integer.parseInt(thread_url.substring(index));
+
+
+		postsFragCallback = new PostsFragCallback<Bundle>() {
+			@Override
+			public void sendQuote(Bundle b) {
+				b.putString("Url", thread_url);
+				b.putInt("CurrentPage", selected_page);
+				b.putString("ThreadName", getArguments().getString("ThreadName"));
+
+				mActivity.onOptionSelected(R.id.thread_new_reply, b);
+			}
+		};
 
 		postsFetched = new Callback<ArrayList<Post>>() {
 			@Override
 			public void onTaskComplete(ArrayList<Post> data) {
 				mAdapter.updatePosts(data);
 				mAdapter.notifyDataSetChanged();
+				// Invalidate optionsmenu since newreply and subscribe-buttons rely on there existing posts in the adapter, which has now been updated.
+				mActivity.supportInvalidateOptionsMenu();
 			}
 		};
 
 		mErrorHandler = new ErrorHandler() {
 			@Override
 			public void handleError(String errormessage) {
-				if(hasErrors) {
-					errorMessage = errormessage;
-					showErrorBox(null);
-				}
+				hasErrors = true;
+				errorMessage = errormessage;
+				showErrorBox();
+
 			}
 		};
 
-        mAdapter = new ShowPostsAdapter(mActivity);
+        mAdapter = new ShowPostsAdapter(mActivity, postsFragCallback);
         setListAdapter(mAdapter);
 
 		getContent();
@@ -220,27 +247,30 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
         super.onCreate(savedInstanceState);
 	}
 
-	private void showErrorBox(View v) {
-		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
-		if(errorlayout.getVisibility() != View.VISIBLE) {
-			final Button retrybutton = (Button) errorlayout.findViewById(R.id.retrybutton);
-			retrybutton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View view) {
-					errorlayout.setVisibility(View.GONE);
-					mAdapter.clearData();
-					mAdapter.notifyDataSetChanged();
-					getContent();
-				}
-			});
-			errorlayout.setVisibility(View.VISIBLE);
-			((TextView) errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+	private void showErrorBox() {
+		if(mErrorLayout != null) {
+			if (mErrorLayout.getVisibility() != View.VISIBLE) {
+				final Button retrybutton = (Button) mErrorLayout.findViewById(R.id.retrybutton);
+				retrybutton.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						mErrorLayout.setVisibility(View.GONE);
+						mAdapter.clearData();
+						mAdapter.notifyDataSetChanged();
+						getContent();
+					}
+				});
+				mErrorLayout.setVisibility(View.VISIBLE);
+				((TextView) mErrorLayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+			}
+		} else {
+			Toast.makeText(mActivity, errorMessage, Toast.LENGTH_SHORT).show();
 		}
 	}
 
 	public void getContent() {
 		postsParserTask = new PostsParserTask(mActivity, postsFetched, mErrorHandler);
-		postsParserTask.execute(thread_url_withpagenr);
+		postsParserTask.execute();
 	}
 
     @Override
@@ -254,7 +284,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 						.setPositiveButton("Bekräfta", new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog, int id) {
 								Bundle bundle = new Bundle();
-								bundle.putString("ThreadId", String.valueOf(getArguments().getInt("ThreadId")));
+								bundle.putString("ThreadId", String.valueOf(thread_id));
 								AddSubsTask addSubsTask = new AddSubsTask(mActivity, bundle);
 								addSubsTask.execute();
 							}
@@ -275,7 +305,7 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
              case R.id.thread_update:
                 Bundle updatebundle = new Bundle();
                 updatebundle.putInt("CurrentPage", selected_page);
-                updatebundle.putString("Url", thread_url);
+                updatebundle.putString("Url", thread_url_withpagenr);
                 updatebundle.putString("ThreadName", getArguments().getString("ThreadName"));
                 ((MainActivity)mActivity).updateThread(updatebundle);
                 break;
@@ -359,10 +389,11 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
-
+		mErrorLayout = (RelativeLayout)view.findViewById(R.id.errorlayout);
         TextView header = (TextView)view.findViewById(R.id.headerleft);
         TextView headerright = (TextView)view.findViewById(R.id.headerright);
-        numPages = getArguments().getInt("NumPages");
+
+        numPages = getArguments().getInt("NumberOfPages");
         String page = "Sida " + (getArguments().getInt("index") + 1) + " av " + numPages;
         String threadname = getArguments().getString("ThreadName");
 
@@ -370,25 +401,14 @@ public class ShowPostsFragment extends ListFragment implements PostsFragCallback
             threadname = "Error-name";
         }
 
+		if(hasErrors) {
+			showErrorBox();
+		}
+
         header.setText(threadname);
         headerright.setText(page);
 
 		return view;
 
 	}
-
-    @Override
-    public void sendQuote(Bundle b) {
-        b.putString("Url", thread_url);
-        b.putInt("CurrentPage", selected_page);
-        b.putString("ThreadName", getArguments().getString("ThreadName"));
-
-        ((MainActivity)mActivity).onOptionSelected(R.id.thread_new_reply, b);
-    }
-
-    @Override
-    public void sendPlusQuote(Bundle b) {
-        int key = b.getInt("PostNumber");
-        String[] authorQuote = {"test", "bla"};
-    }
 }

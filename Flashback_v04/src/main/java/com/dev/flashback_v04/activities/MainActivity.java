@@ -7,34 +7,31 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-
 import android.net.Uri;
 import android.net.http.HttpResponseCache;
 import android.os.Build;
 import android.os.Bundle;
-
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
-
 import android.view.Gravity;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-
 import android.widget.AdapterView;
 import android.widget.EditText;
-
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.dev.flashback_v04.*;
+import com.dev.flashback_v04.Constants;
+import com.dev.flashback_v04.LoginHandler;
+import com.dev.flashback_v04.R;
+import com.dev.flashback_v04.SharedPrefs;
 import com.dev.flashback_v04.adapters.DrawerAdapter;
 import com.dev.flashback_v04.adapters.ShowPostsAdapter;
 import com.dev.flashback_v04.asynctasks.LoginTask;
@@ -43,6 +40,7 @@ import com.dev.flashback_v04.asynctasks.special.PutEditedPostTask;
 import com.dev.flashback_v04.asynctasks.special.SendPMTask;
 import com.dev.flashback_v04.fragments.MainPager;
 import com.dev.flashback_v04.fragments.SecondaryPager;
+import com.dev.flashback_v04.fragments.ShowCategoriesFragment;
 import com.dev.flashback_v04.fragments.special.CreateThreadFragment;
 import com.dev.flashback_v04.fragments.special.CurrentThreadsFragment;
 import com.dev.flashback_v04.fragments.special.EditPostFragment;
@@ -51,15 +49,11 @@ import com.dev.flashback_v04.fragments.special.NewPostsFragment;
 import com.dev.flashback_v04.fragments.special.NewThreadsFragment;
 import com.dev.flashback_v04.fragments.special.PostReplyFragment;
 import com.dev.flashback_v04.fragments.special.PrivateMessagingPager;
-import com.dev.flashback_v04.fragments.special.SearchFragment;
 import com.dev.flashback_v04.fragments.special.ViewPMFragment;
 import com.dev.flashback_v04.interfaces.OnOptionSelectedListener;
-
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
-import java.io.File;
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -146,11 +140,13 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	/*
 	* Call this to open a specific thread
 	* */
-	public void openThread(String url, int position, String threadname) {
+	public void openThread(String url, int numPages, int position, String threadname) {
 		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 3);
-        args.putInt("Position", position);
+		args.putInt("CurrentPage", position);
+		if(numPages != 0)
+			args.putInt("NumberOfPages", numPages);
         args.putString("ThreadName", threadname);
 		args.putString("Url", url);
 		fragment.setArguments(args);
@@ -173,11 +169,14 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 	/*
 	* Call this to open a specific forum
 	* */
-	public void openForum(String url, String forumname) {
+	public void openForum(String url, int numpages, String forumname) {
 		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 2);
         args.putString("ForumName", forumname);
+		if(numpages != -1)
+			args.putInt("NumberOfPages", numpages);
+		args.putInt("CurrentPage", 1);
 		args.putString("Url", url);
 		fragment.setArguments(args);
 		/*
@@ -207,11 +206,11 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		Fragment fragment = new MainPager();
 		Bundle args = new Bundle();
 		args.putInt("FragmentType", 1);
-		args.putInt("NumPages", 15);
+		args.putInt("NumberOfPages", 15);
         args.putStringArrayList("CategoryNames", catName);
 		args.putStringArrayList("Categories", categories);
 		args.putString("Url", url);
-		args.putInt("Position", position);
+		args.putInt("CurrentPage", position);
 		fragment.setArguments(args);
 
         /*
@@ -291,7 +290,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 
 
 			Calendar nowdate = Calendar.getInstance();
-			String toDateAsString = "05/04/2014";
+			String toDateAsString = "12/01/2014";
 			Date toDate = null;
 			try {
 				toDate = new SimpleDateFormat("MM/dd/yyyy").parse(toDateAsString);
@@ -317,7 +316,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 					final AlertDialog easterSale = new AlertDialog.Builder(this)
 							.setView(sale)
 							.create();
-					//easterSale.show();
+					easterSale.show();
 				}
 			}
 
@@ -374,9 +373,11 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
         if(ADS_ACTIVATED) {
             String testDevice = this.getResources().getString(R.string.test_device);
             String testDeviceEmu = this.getResources().getString(R.string.test_device_emu);
+            String testDeviceEmu2 = this.getResources().getString(R.string.test_device_emu2);
             AdRequest request = new AdRequest.Builder()
                     .addTestDevice(testDevice)
 					.addTestDevice(testDeviceEmu)
+					.addTestDevice(testDeviceEmu2)
                     .build();
             adView.loadAd(request);
         } else {
@@ -705,13 +706,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 		* Each wrapperfragment contains its own viewpager.
 		* */
 		if(savedInstanceState == null) {
-			Fragment fragment = new MainPager();
-
-			Bundle args = new Bundle();
-			args.putInt("FragmentType", 0);
-			args.putInt("NumPages", 1);
-
-			fragment.setArguments(args);
+			Fragment fragment = new ShowCategoriesFragment();
 
 			fragmentManager
 					.beginTransaction()
@@ -812,7 +807,7 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
 				updateForum(args, true);
 				break;
             case R.id.gotolastpage:
-                openThread(args.getString("Url"), args.getInt("LastPage"), args.getString("ThreadName"));
+                openThread(args.getString("Url"), args.getInt("NumberOfPages"), args.getInt("LastPage"), args.getString("ThreadName"));
                 break;
         }
     }
@@ -837,9 +832,10 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 // Retrieve bundle info
                 String url = bundle.getString("Url");
                 int position = bundle.getInt("CurrentPage");
+
                 String threadname = bundle.getString("ThreadName");
                 // Reload thread
-                openThread(url ,position, threadname);
+                openThread(url, 0, position, threadname);
             }
         });
     }
@@ -859,9 +855,10 @@ public class MainActivity extends ActionBarActivity implements OnOptionSelectedL
                 // Retrieve stuff in bundle
                 String url = o.getString("ForumUrl");
                 String forumname = o.getString("ForumName");
+				int numpages = o.getInt("NumberOfPages");
 
                 // Reopen the forum.
-                openForum(url, forumname);
+                openForum(url, numpages, forumname);
             }
         });
     }

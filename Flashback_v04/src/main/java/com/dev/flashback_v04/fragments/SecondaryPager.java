@@ -29,11 +29,10 @@ public class SecondaryPager extends Fragment {
     // Retrieves the number of pages for the PagerAdapter
     public class GetSizeTask extends AsyncTask<String, String, Integer> {
 
-        private final ProgressDialog dialog;
         private Parser mParser;
         private Callback mCallback;
 
-        public GetSizeTask(Activity mActivity, Callback callback) {
+        public GetSizeTask(Callback callback) {
             mParser = new Parser(mActivity);
             mCallback = callback;
             dialog = new ProgressDialog(mActivity);
@@ -68,16 +67,20 @@ public class SecondaryPager extends Fragment {
 
         @Override
         protected void onPreExecute() {
-            dialog.setMessage("Laddar..");
-            dialog.show();
+			if(dialog != null) {
+				dialog.setMessage("Laddar..");
+				dialog.show();
+			}
             super.onPreExecute();
         }
 
         @Override
         protected void onPostExecute(Integer result) {
-            if(dialog.isShowing()) {
-                dialog.dismiss();
-            }
+			if(dialog != null) {
+				if (dialog.isShowing()) {
+					dialog.dismiss();
+				}
+			}
             mCallback.onTaskComplete(result);
         }
 
@@ -89,6 +92,7 @@ public class SecondaryPager extends Fragment {
     private SecondaryPagerAdapter mPagerAdapter;
     private GetSizeTask mGetSizeTask;
     private Bundle mPagerBundle;
+	private ProgressDialog dialog;
 
     int numPages;
     int pageNumber;
@@ -100,7 +104,14 @@ public class SecondaryPager extends Fragment {
         mActivity = activity;
     }
 
-    @Override
+	@Override
+	public void onPause() {
+		super.onPause();
+		// Need to set to null. Else app will crash on rotation since dialog holds reference to the old mActivity, not the newly created one.
+		dialog = null;
+	}
+
+	@Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt("NumPages", numPages);
@@ -164,7 +175,7 @@ public class SecondaryPager extends Fragment {
 					break;
             }
 
-            mGetSizeTask = new GetSizeTask(mActivity, mCallback);
+            mGetSizeTask = new GetSizeTask(mCallback);
             mGetSizeTask.execute(fragmentType, url);
         } else {
             numPages = savedInstanceState.getInt("NumPages");

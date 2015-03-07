@@ -15,7 +15,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
+import android.widget.Toast;
 
 
 import com.dev.flashback_v04.Parser;
@@ -93,6 +93,7 @@ public class ShowForumsFragment extends ListFragment {
 
     private Callback forumFetched;
 	private ErrorHandler mErrorHandler;
+	private RelativeLayout mErrorLayout;
 
 	private boolean hasErrors;
 	private String errorMessage;
@@ -102,13 +103,13 @@ public class ShowForumsFragment extends ListFragment {
 	private ArrayList<String> categories;
 	private ArrayList<String> categorynames;
 	private String category_url = null;
-	private Activity mActivity;
+	private MainActivity mActivity;
     private ForumsParserTask forumsParserTask;
 
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
-        mActivity = activity;
+        mActivity = (MainActivity)activity;
 	}
 
     @Override
@@ -117,8 +118,10 @@ public class ShowForumsFragment extends ListFragment {
 
 		String url = mAdapter.getmItems().get(position).get("ForumLink");
         String forumname = mAdapter.getmItems().get(position).get("ForumName");
+		int numThreads = Integer.parseInt(mAdapter.getmItems().get(position).get("NumberOfThreads"));
+		int numPages = (int)Math.ceil(numThreads / 50.0);
 
-		((MainActivity)getParentFragment().getActivity()).openForum(url, forumname);
+		mActivity.openForum(url, -1, forumname);
 	}
 
     @Override
@@ -151,7 +154,7 @@ public class ShowForumsFragment extends ListFragment {
 			public void handleError(String errormessage) {
 				hasErrors = true;
 				errorMessage = errormessage;
-				showErrorBox(null);
+				showErrorBox();
 			}
 		};
 
@@ -182,27 +185,30 @@ public class ShowForumsFragment extends ListFragment {
 		forumsParserTask.execute(categories.get(selected_category));
 	}
 
-	private void showErrorBox(View v) {
-		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
-
-		final Button retrybutton = (Button)errorlayout.findViewById(R.id.retrybutton);
-		retrybutton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View view) {
-				errorlayout.setVisibility(View.GONE);
-				mAdapter.getmItems().clear();
-				mAdapter.notifyDataSetChanged();
-				getContent();
-			}
-		});
-		errorlayout.setVisibility(View.VISIBLE);
-		((TextView)errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+	private void showErrorBox() {
+		if(mErrorLayout != null) {
+			final Button retrybutton = (Button) mErrorLayout.findViewById(R.id.retrybutton);
+			retrybutton.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View view) {
+					mErrorLayout.setVisibility(View.GONE);
+					mAdapter.getmItems().clear();
+					mAdapter.notifyDataSetChanged();
+					getContent();
+				}
+			});
+			mErrorLayout.setVisibility(View.VISIBLE);
+			((TextView) mErrorLayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+		} else {
+			Toast.makeText(mActivity, errorMessage, Toast.LENGTH_SHORT).show();
+		}
 	}
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = null;
 		view = inflater.inflate(R.layout.main_list_pager_layout, container, false);
+		mErrorLayout = (RelativeLayout)view.findViewById(R.id.errorlayout);
 
 		setListAdapter(mAdapter);
 
@@ -215,7 +221,7 @@ public class ShowForumsFragment extends ListFragment {
 		}
 
 		if(hasErrors) {
-			showErrorBox(view);
+			showErrorBox();
 		}
 
 		TextView header = (TextView) view.findViewById(R.id.headerleft);

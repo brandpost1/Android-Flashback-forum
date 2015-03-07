@@ -2,6 +2,7 @@ package com.dev.flashback_v04.fragments.special;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
@@ -26,7 +27,7 @@ import java.util.HashMap;
  */
 public class UserThreadsFragment extends ListFragment {
 
-    public class GetMyThreadsTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+	public class GetMyThreadsTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
         Callback mProgressUpdate;
         Callback mCallback;
@@ -63,6 +64,7 @@ public class UserThreadsFragment extends ListFragment {
     private GetMyThreadsTask getMyThreadsTask;
     private Callback threadFetched;
 
+	private int POSTS_PER_PAGE;
     private int pageNumber;
     private int numPages;
 	private String userId;
@@ -159,8 +161,14 @@ public class UserThreadsFragment extends ListFragment {
         super.onListItemClick(l, v, position, id);
 		String url = myThreadsAdapter.getItems().get(position).get("ThreadLink");
 		String threadname = myThreadsAdapter.getItems().get(position).get("ThreadName");
+		String numPosts = myThreadsAdapter.getItems().get(position).get("ThreadNumReplies");
+
+		SharedPreferences preferences = mActivity.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+		POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+		int pageCount = (int)(Math.ceil((Integer.parseInt(numPosts.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
 		try {
-			mActivity.openThread(url, 0, threadname);
+			mActivity.openThread(url, pageCount, 1, threadname);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}

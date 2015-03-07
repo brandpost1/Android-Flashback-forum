@@ -6,6 +6,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -70,6 +71,8 @@ public class PMFragment extends ListFragment {
     private int pageNumber;
     private int numPages;
 	private int fragmentType;
+	private String headerText;
+	private boolean showInstant;
 
 
     @Override
@@ -85,6 +88,8 @@ public class PMFragment extends ListFragment {
         outState.putInt("PageNumber", pageNumber);
         outState.putInt("NumPages", numPages);
 		outState.putInt("FragmentType", fragmentType);
+		outState.putString("HeaderText", headerText);
+		outState.putBoolean("ShowInstant", showInstant);
     }
 
     @Override
@@ -113,12 +118,16 @@ public class PMFragment extends ListFragment {
 			pageNumber = getArguments().getInt("PageNumber");
 			numPages = getArguments().getInt("NumPages");
 			fragmentType = getArguments().getInt("FragmentType");
-			loadPmList();
+			headerText = getArguments().getString("HeaderText");
+			showInstant = getArguments().getBoolean("ShowInstant");
+			if(showInstant)
+				getData();
 		} else {
 			pageNumber = savedInstanceState.getInt("PageNumber");
 			numPages = savedInstanceState.getInt("NumPages");
 			fragmentType = savedInstanceState.getInt("FragmentType");
-
+			headerText = savedInstanceState.getString("HeaderText");
+			showInstant = savedInstanceState.getBoolean("ShowInstant");
 		}
 
     }
@@ -167,6 +176,7 @@ public class PMFragment extends ListFragment {
 		String url = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("Link");
 		String from = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("From");
 		String header = ((HashMap<String, String>)privateMessagesAdapter.getItem(position)).get("Headline");
+
 		// Get PMId from url
 		String pmId;
 		try {
@@ -180,6 +190,11 @@ public class PMFragment extends ListFragment {
 		args.putString("From", from);
 		((MainActivity)mActivity).openPrivateMessage(args);
     }
+
+	public void getData() {
+		clearPmList();
+		loadPmList();
+	}
 
 	private void clearPmList() {
 		privateMessagesAdapter.clearListData();

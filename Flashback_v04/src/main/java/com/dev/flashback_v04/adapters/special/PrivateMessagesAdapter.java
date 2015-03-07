@@ -119,25 +119,25 @@ public class PrivateMessagesAdapter extends BaseAdapter {
 
 
 				String iconString = mItems.get(i).get("Icon");
-				if(iconString.equals("icon-pm-replied")) {
+				if(iconString.contains("icon-pm-replied")) {
 					if(darkTheme) {
 						icon.setBackgroundResource(R.drawable.ic_action_reply_dark);
 					} else {
 						icon.setBackgroundResource(R.drawable.ic_action_reply);
 					}
-				} else if(iconString.equals("icon-pm-old")) {
+				} else if(iconString.contains("icon-pm-old")) {
 					if(darkTheme) {
 						icon.setBackgroundResource(R.drawable.ic_action_read_dark);
 					} else {
 						icon.setBackgroundResource(R.drawable.ic_action_read);
 					}
-				} else if(iconString.equals("icon-pm-new")) {
+				} else if(iconString.contains("icon-pm-new")) {
 					if(darkTheme) {
 						icon.setBackgroundResource(R.drawable.ic_action_unread_dark);
 					} else {
 						icon.setBackgroundResource(R.drawable.ic_action_unread);
 					}
-				} else if(iconString.equals("icon-pm-forwarded")) {
+				} else if(iconString.contains("icon-pm-forwarded")) {
 					if(darkTheme) {
 						icon.setBackgroundResource(R.drawable.ic_action_forward_dark);
 					} else {

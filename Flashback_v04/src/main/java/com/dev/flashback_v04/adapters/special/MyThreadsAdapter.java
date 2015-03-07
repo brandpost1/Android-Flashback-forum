@@ -1,6 +1,7 @@
 package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,11 +20,12 @@ import java.util.HashMap;
  */
 public class MyThreadsAdapter extends BaseAdapter {
 
-    ArrayList<HashMap<String, String>> mItems;
-	Context mContext;
-	LayoutInflater mInflater;
+	private ArrayList<HashMap<String, String>> mItems;
+	private Context mContext;
+	private LayoutInflater mInflater;
+	private int POSTS_PER_PAGE;
 
-    public MyThreadsAdapter(Context context) {
+	public MyThreadsAdapter(Context context) {
 		mContext = context;
 		mInflater = (LayoutInflater)mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		mItems = new ArrayList<HashMap<String, String>>();
@@ -79,10 +81,17 @@ public class MyThreadsAdapter extends BaseAdapter {
 
 		final String url = mItems.get(position).get("ThreadLink");
 		final String name = mItems.get(position).get("ThreadName");
+		String postCount = mItems.get(position).get("ThreadNumReplies");
+
+		SharedPreferences preferences = mContext.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+		POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+		final int pageCount = (int)(Math.ceil((Integer.parseInt(postCount.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
+
 		lastPage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
-				((MainActivity)mContext).openThread(url, -2, name);
+				((MainActivity)mContext).openThread(url, pageCount, pageCount, name);
 			}
 		});
 

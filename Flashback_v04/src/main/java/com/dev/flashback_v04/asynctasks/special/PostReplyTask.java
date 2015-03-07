@@ -18,15 +18,17 @@ import java.io.IOException;
  * Created by Viktor on 2013-11-29.
  */
 public class PostReplyTask extends AsyncTask<String, String, Boolean> {
-    Context mContext;
-    Parser mParser;
+    private Context mContext;
+	private Parser mParser;
 
-    ProgressDialog dialog;
-    int returnedPages = 1;
-    String threadUrl = "";
-    String message = "";
-    String threadName = "";
-    int currentPage = 0;
+	private ProgressDialog dialog;
+	private int returnedPages = 1;
+	private String threadUrl = "";
+	private String message = "";
+	private String threadName = "";
+	private int currentPage = 0;
+
+	Bundle forwardBundle;
 
     public PostReplyTask(Context context, Bundle args) {
         mParser = new Parser(context);
@@ -36,17 +38,25 @@ public class PostReplyTask extends AsyncTask<String, String, Boolean> {
         threadUrl = args.getString("Url");
         currentPage = args.getInt("CurrentPage");
         threadName = args.getString("ThreadName");
-    }
+
+		forwardBundle = new Bundle();
+		forwardBundle.putString("HideSmileys", args.getString("HideSmileys"));
+		forwardBundle.putString("ConvertLinks", args.getString("ConvertLinks"));
+
+	}
 
     @Override
     protected Boolean doInBackground(String... strings) {
-
         message = strings[0];
+
+		forwardBundle.putString("ThreadUrl", threadUrl);
+		forwardBundle.putString("Message",  message);
+
         boolean success;
         try {
             // Url, Message, Context
             try {
-                success = LoginHandler.postReply(threadUrl, message, mContext);
+                success = LoginHandler.postReply(forwardBundle, mContext);
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;

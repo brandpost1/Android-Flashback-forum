@@ -49,11 +49,11 @@ public class Parser {
         });
     }
 
-    private boolean haveNetworkConnection() {
+    private boolean haveNetworkConnection(Context context) {
         boolean haveConnectedWifi = false;
         boolean haveConnectedMobile = false;
 
-        ConnectivityManager cm = (ConnectivityManager)mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo[] netInfo = cm.getAllNetworkInfo();
         for (NetworkInfo ni : netInfo) {
             if (ni.getTypeName().equalsIgnoreCase("WIFI"))
@@ -66,10 +66,10 @@ public class Parser {
         return haveConnectedWifi || haveConnectedMobile;
     }
 
-    private void Connect(String url) throws NullPointerException, IOException  {
-        Map<String, String> cookie = LoginHandler.getSessionCookie(mContext);
+    private void Connect(String url, Context context) throws NullPointerException, IOException  {
+        Map<String, String> cookie = LoginHandler.getSessionCookie(context);
 
-        SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(context);
         int timeout;
         try {
             String to = appPrefs.getString("connection_timeout", "5000");
@@ -79,11 +79,11 @@ public class Parser {
             e.printStackTrace();
         }
 
-        if(haveNetworkConnection()) {
+        if(haveNetworkConnection(context)) {
             // Check for cookie
             if(!cookie.isEmpty()) {
                 // Connect with cookie
-                currentSite = LoginHandler.cookieConnect(url, cookie, mContext, timeout);
+                currentSite = LoginHandler.cookieConnect(url, cookie, context, timeout);
             } else {
                 // Connect without cookie
                 currentSite = LoginHandler.basicConnect(url, timeout);
@@ -98,7 +98,7 @@ public class Parser {
 
     public boolean getPreferences() {
         try {
-            Connect("https://www.flashback.org/profile.php?do=editoptions");
+            Connect("https://www.flashback.org/profile.php?do=editoptions", mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
 
@@ -109,7 +109,8 @@ public class Parser {
             return false;
         }
 
-        String numPostsPerPage = currentSite.select("form table.tborder tbody fieldset:contains(Antal inlägg att visa per sida) select option[selected=selected]").attr("value");
+        //String numPostsPerPage = currentSite.select("form table.tborder tbody fieldset:contains(Antal inlägg att visa per sida) select option[selected=selected]").attr("value");
+        String numPostsPerPage = currentSite.select("form select[id=sel_umaxposts] option[selected=selected]").attr("value");
         int NumPostsPage;
         try {
             NumPostsPage = Integer.parseInt(numPostsPerPage);
@@ -134,7 +135,7 @@ public class Parser {
 
     public boolean setUserId() {
         try {
-            Connect("https://www.flashback.org/");
+            Connect("https://www.flashback.org/", mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
             return false;
@@ -173,22 +174,26 @@ public class Parser {
 	public String getCategoryContent(String url, Callback<HashMap<String, String>> mProgressUpdate) {
         HashMap<String, String> map = new HashMap<String, String>();
         try {
-            Connect(url);
-        } catch(NullPointerException e) {
-            e.printStackTrace();
-            return "Error";
-        } catch (IOException e) {
-			if(e instanceof SocketTimeoutException) {
-				return "Connection timed out.";
+			Connect(url, mContext);
+		} catch(NullPointerException e) {
+			if(e.getMessage() != null) {
+				if(e.getMessage().equals("No network connection."))
+					return "Error: Det finns ingen internetanslutning.";
 			}
-            return "Error";
-        }
+			return "Error";
+		} catch (IOException e) {
+			if(e instanceof SocketTimeoutException) {
+				return "Error: Connection timed out.";
+			}
+			return "Error";
+		}
 
 		Elements forums = currentSite.select("tr td.alt1Active");
 
 		String forumName;
 		String forumLink;
 		String forumInfo;
+		String numThreads;
 
 		for(Element f : forums) {
             map = new HashMap<String, String>();
@@ -197,7 +202,9 @@ public class Parser {
 			forumName = f.select("a").text();
 			forumLink = f.select("a[href]").attr("abs:href");
 			forumInfo = f.select(".forum-summary").text();
-
+			numThreads = f.select(".forum-summary").text()
+					.substring(0, f.select(".forum-summary").text().indexOf(" ämnen"));
+			numThreads = numThreads.replaceAll("\\s+","");
 			n = f.select(":has(.icon-subforum");
 			if(n.size() == 0) {
 
@@ -205,6 +212,7 @@ public class Parser {
                 map.put("ForumName", forumName);
                 map.put("ForumLink", forumLink);
                 map.put("ForumInfo", forumInfo);
+                map.put("NumberOfThreads", numThreads);
                 // Return it
                 mProgressUpdate.onTaskComplete(map);
 			}
@@ -219,7 +227,7 @@ public class Parser {
      */
     public int getForumNumPages(String url) {
         try {
-            Connect(url);
+            Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
             return 1;
@@ -256,15 +264,19 @@ public class Parser {
 	public String getForumContents(String url, Callback mProgressUpdate) throws Exception {
         HashMap<String, String> map = new HashMap<String, String>();
         try {
-            Connect(url);
-        } catch(NullPointerException e) {
-            return "Error";
-        } catch (IOException e) {
-			if(e instanceof SocketTimeoutException) {
-				return "Connection timed out.";
+			Connect(url, mContext);
+		} catch(NullPointerException e) {
+			if(e.getMessage() != null) {
+				if(e.getMessage().equals("No network connection."))
+					return "Error: Det finns ingen internetanslutning.";
 			}
-            return "Error";
-        }
+			return "Error";
+		} catch (IOException e) {
+			if(e instanceof SocketTimeoutException) {
+				return "Error: Connection timed out.";
+			}
+			return "Error";
+		}
 
 		String name;
 		String link;
@@ -380,13 +392,18 @@ public class Parser {
 
 	public String getSubforumsAndThreads(String url, Callback forumProgress, Callback threadProgress) {
 		HashMap<String, String> map = new HashMap<String, String>();
+
 		try {
-			Connect(url);
-		} catch(NullPointerException e) {
+			Connect(url, mContext);
+		} catch (NullPointerException e) {
+			if (e.getMessage() != null) {
+				if (e.getMessage().equals("No network connection."))
+					return "Error: Det finns ingen internetanslutning.";
+			}
 			return "Error";
 		} catch (IOException e) {
-			if(e instanceof SocketTimeoutException) {
-				return "Connection timed out.";
+			if (e instanceof SocketTimeoutException) {
+				return "Error: Connection timed out.";
 			}
 			return "Error";
 		}
@@ -398,6 +415,7 @@ public class Parser {
 		String forumName;
 		String forumLink;
 		String forumInfo;
+		String numThreads;
 
 		for(Element f : forums) {
 			map = new HashMap<String, String>();
@@ -406,6 +424,9 @@ public class Parser {
 			forumName = f.select("a").text();
 			forumLink = f.select("a[href]").attr("abs:href");
 			forumInfo = f.select(".forum-summary").text();
+			numThreads = f.select(".forum-summary").text()
+					.substring(0, f.select(".forum-summary").text().indexOf(" ämnen"));
+			numThreads = numThreads.replaceAll("\\s+","");
 
 			n = f.select(":has(.icon-subforum");
 			if(n.size() == 0) {
@@ -414,6 +435,7 @@ public class Parser {
 				map.put("ForumName", forumName);
 				map.put("ForumLink", forumLink);
 				map.put("ForumInfo", forumInfo);
+				map.put("NumberOfThreads", numThreads);
 				// Return it
 				forumProgress.onTaskComplete(map);
 			}
@@ -543,7 +565,11 @@ public class Parser {
 
 		String temp = null;
 		if(currentSite != null) {
-			temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").text();
+            try {
+                temp = currentSite.select("table.tborder.thread-nav div.pagenav.nborder.fr tr td.alt2 a.smallfont2.bold").get(0).text();
+            } catch (IndexOutOfBoundsException e) {
+                temp = "1";
+            }
 			if (!temp.equals("")) {
 				try {
 					threadPos = Integer.parseInt(temp);
@@ -584,7 +610,7 @@ public class Parser {
      */
     public int getThreadNumPages(String url) {
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             return 1;
         } catch (IOException e) {
@@ -616,18 +642,24 @@ public class Parser {
      */
 	public String getThreadContent(String url, Callback<ArrayList<Post>> updatePosts) {
 		//long startTime = System.nanoTime();
-
         ArrayList<Post> postArrayList = new ArrayList<Post>();
-        try {
-            Connect(url);
-        } catch(NullPointerException e) {
-            return "Error";
-        } catch (IOException e) {
-			if(e instanceof SocketTimeoutException) {
-				return "Connection timed out.";
+
+		try {
+			Connect(url, mContext);
+		} catch(NullPointerException e) {
+			if(e.getMessage() != null) {
+				if(e.getMessage().equals("No network connection."))
+					return "Error: Det finns ingen internetanslutning.";
 			}
-            return "IOException";
-        }
+			return "Error";
+		} catch (IOException e) {
+			if(e instanceof SocketTimeoutException) {
+				return "Error: Connection timed out.";
+			}
+			return "Error";
+		}
+
+
         String author;
 		String numposts;
 		String membertype;
@@ -638,8 +670,7 @@ public class Parser {
 		String userProfileUrl;
 		String regdate;
         String postUrl;
-		String threadId = null;
-		String editUrl = "";
+		String threadId;
 
 		threadId = currentSite.select("td.navbar a").attr("abs:href");
 		if(threadId.contains("/t")) {
@@ -1058,7 +1089,7 @@ public class Parser {
     public boolean getCurrent(String url, Callback mProgressUpdate) {
 
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
             return false;
@@ -1124,7 +1155,7 @@ public class Parser {
     public boolean getNewThreads(String url, Callback mProgressUpdate) {
 
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
 
@@ -1176,7 +1207,7 @@ public class Parser {
     public boolean getNewPosts(String url, Callback mProgressUpdate) {
 
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
 
@@ -1224,7 +1255,7 @@ public class Parser {
      */
     public boolean getPrivateMessages(String url, Callback progressUpdate) {
 		try {
-			Connect(url);
+			Connect(url, mContext);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
 
@@ -1249,11 +1280,11 @@ public class Parser {
 
 			progressUpdate.onTaskComplete(category);
 
-			Elements messages = categorycontent.get(i).select("tr");
+			Elements messages = categorycontent.get(i).select(">tr");
 			for(int j = 0; j < messages.size(); j++) {
 				String icon = messages.get(j).select("td:first-child div").attr("class");
-				String messageDate = messages.get(j).select("td:nth-child(2) div:first-child span").text();
-				String messageTime = messages.get(j).select("td:nth-child(2) div:nth-child(2) span").text();
+				String messageDate = messages.get(j).select("td:nth-child(2) div:first-child.smallfont").text();
+				String messageTime = messages.get(j).select("td:nth-child(2) div:nth-child(2).time").text();
 				String messageHeadline = messages.get(j).select("td:nth-child(2) div:first-child a").text();
 				String messageFrom = messages.get(j).select("td:nth-child(2) div:nth-child(2) a").text();
 				String messageLink = messages.get(j).select("td:nth-child(2) div:first-child a").attr("abs:href");
@@ -1292,7 +1323,7 @@ public class Parser {
     public boolean getMyThreads(String url, Callback mProgressUpdate) {
 		HashMap<String, String> map;
 		try {
-			Connect(url);
+			Connect(url, mContext);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
 
@@ -1363,7 +1394,7 @@ public class Parser {
      */
     public int myQuotesPages(String url) {
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
 
@@ -1409,7 +1440,7 @@ public class Parser {
         HashMap<String, String> map;
         ArrayList<HashMap<String, String>> newList = new ArrayList<HashMap<String, String>>();
         try {
-            Connect(url);
+			Connect(url, mContext);
         } catch(NullPointerException e) {
             e.printStackTrace();
 
@@ -1436,7 +1467,7 @@ public class Parser {
             forumLink = posts.get(i).select("td.thead span a").attr("abs:href");
             date = posts.get(i).select("td.thead").first().ownText();
             postedBy = posts.get(i).select("td.alt1 > div.smallfont a").text();
-            threadTitle = posts.get(i).select("td.alt1 > div a[href^=/t]").text();
+            threadTitle = posts.get(i).select("div a[href^=/t]").text();
             threadLink = posts.get(i).select("td.alt1 div.alt2.post-quote div em a[href^=/p]").attr("abs:href");
             threadLink = threadLink.substring(0, threadLink.lastIndexOf("#"));
 
@@ -1470,7 +1501,7 @@ public class Parser {
 	public int getSubscriptionPages(String url) {
 		int numPages = 1;
 		try {
-			Connect(url);
+			Connect(url, mContext);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
 
@@ -1507,7 +1538,7 @@ public class Parser {
 
 	public boolean getMySubscribedThreads(String url, Callback progressupdate) {
 		try {
-			Connect(url);
+			Connect(url, mContext);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
 
@@ -1569,7 +1600,7 @@ public class Parser {
 		String token = "";
 		if(LoginHandler.loggedIn(mContext)) {
 			try {
-				Connect("https://www.flashback.org/private.php?do=newpm");
+				Connect("https://www.flashback.org/private.php?do=newpm", mContext);
 			} catch (NullPointerException e) {
 				e.printStackTrace();
 				return "";
@@ -1581,14 +1612,13 @@ public class Parser {
 			token = currentSite.select("input[name=stoken]").attr("value");
 		}
 		return token;
-
 	}
 
 	public HashMap<String, String> getEditPostContent(String url) {
 		HashMap<String, String> fields = new HashMap<String, String>();
 
 		try {
-			Connect(url);
+			Connect(url, mContext);
 		} catch(NullPointerException e) {
 			e.printStackTrace();
 			return fields;

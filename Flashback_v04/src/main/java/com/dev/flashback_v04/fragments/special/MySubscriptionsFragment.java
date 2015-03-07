@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.dev.flashback_v04.Parser;
 import com.dev.flashback_v04.R;
@@ -223,12 +224,12 @@ public class MySubscriptionsFragment extends ListFragment {
 		super.onListItemClick(l, v, position, id);
 		String threadUrl = ((HashMap<String, String>)mySubsAdapter.getItem(position)).get("Link");
 		String threadName = ((HashMap<String, String>)mySubsAdapter.getItem(position)).get("Title");
+		int numPages = Integer.parseInt(((HashMap<String, String>)mySubsAdapter.getItem(position)).get("LastPage"));
 
 		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			if (mActionMode != null) mActionMode.finish();
 		}
-
-		((MainActivity)mActivity).openThread(threadUrl, 1, threadName);
+		((MainActivity)mActivity).openThread(threadUrl, numPages, 1, threadName);
 	}
 
 	// For contextual action mode

@@ -118,7 +118,7 @@ public class MySubsAdapter extends BaseAdapter {
 					pageNumber = 1;
 				}
 
-				((MainActivity)mContext).openThread(url, pageNumber, title);
+				((MainActivity)mContext).openThread(url, pageNumber, pageNumber, title);
 			}
 		});
 

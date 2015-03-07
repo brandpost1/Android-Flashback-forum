@@ -27,7 +27,7 @@ import java.util.HashMap;
  */
 public class NewThreadsFragment extends ListFragment {
 
-    public class NewThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+	public class NewThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
         Context mContext;
         Parser mParser;
@@ -69,6 +69,7 @@ public class NewThreadsFragment extends ListFragment {
     private NewThreadsParserTask threadsParserTask;
     private Callback threadFetched;
     private Activity mActivity;
+	private int POSTS_PER_PAGE;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -120,28 +121,23 @@ public class NewThreadsFragment extends ListFragment {
 
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
-        SharedPreferences sessionPrefs;
-        int posts_per_page;
-        String total_thread_posts;
-        int replies;
-        int numpages;
+		String postCount;
         String threadname;
         String url;
+		int pageCount;
 
         try {
-            sessionPrefs = (getActivity()).getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
-            posts_per_page = sessionPrefs.getInt("Thread_Max_Posts_Page", 12);
-            total_thread_posts = ((HashMap<String, String>)mAdapter.getItem(position)).get("Replies");
+			SharedPreferences preferences = mActivity.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+			POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
 
-            total_thread_posts = total_thread_posts.replace("\u00A0","");
+			postCount = ((HashMap<String, String>)mAdapter.getItem(position)).get("Replies");
+			pageCount = (int)(Math.ceil((Integer.parseInt(postCount.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
 
-            replies = Integer.parseInt(total_thread_posts.replace(" ", "").toString());
             threadname = ((HashMap<String, String>)mAdapter.getItem(position)).get("Headline");
 
-            numpages = (int) Math.ceil(replies / posts_per_page) + 1;
             url = ((HashMap<String, String>)mAdapter.getItem(position)).get("Link");
 
-            ((MainActivity)getActivity()).openThread(url, 0, threadname);
+            ((MainActivity)getActivity()).openThread(url, pageCount, 1, threadname);
         } catch (NullPointerException e) {
             e.printStackTrace();
         } catch (IndexOutOfBoundsException e) {

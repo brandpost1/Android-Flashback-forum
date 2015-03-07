@@ -12,6 +12,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,8 +31,9 @@ public class PostReplyFragment extends Fragment {
     private String threadUrl = "";
     private int currentPage = 0;
 	private Context mContext;
-    EditText messageArea;
-
+    private EditText messageArea;
+	private CheckBox convertLinks;
+	private CheckBox hideSmileys;
 
     public PostReplyFragment() {
     }
@@ -57,6 +59,9 @@ public class PostReplyFragment extends Fragment {
                 args.putString("Url", getArguments().getString("Url"));
                 args.putInt("CurrentPage", getArguments().getInt("CurrentPage"));
                 args.putString("ThreadName", getArguments().getString("ThreadName"));
+				args.putString("ConvertLinks", convertLinks.isChecked() ? "1" : "0");
+				args.putString("HideSmileys", hideSmileys.isChecked() ? "1" : "0");
+
 
 				// Close keyboard
 				InputMethodManager imm = (InputMethodManager)mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -67,13 +72,6 @@ public class PostReplyFragment extends Fragment {
                 // Retrieve message
                 String message = messageArea.getText().toString();
                 try {
-                    /*
-                    // Save draft
-                    PreferenceManager.getDefaultSharedPreferences(getActivity())
-                            .edit()
-                            .putString("LastMessage", message)
-                            .commit();
-                    */
                     // Send reply
                     replyTask.execute(message);
                 } catch(IllegalStateException e) {
@@ -107,6 +105,9 @@ public class PostReplyFragment extends Fragment {
 
         TextView replyHeader = (TextView)view.findViewById(R.id.newpost_header);
         messageArea = (EditText)view.findViewById(R.id.newpost_reply_textbox);
+		convertLinks = (CheckBox)view.findViewById(R.id.newpost_url2link_chkbox);
+		hideSmileys = (CheckBox)view.findViewById(R.id.newpost_smiley2text_chkbox);
+
 
         String quote = getArguments().getString("Quote");
         String author = getArguments().getString("Author");

@@ -3,6 +3,7 @@ package com.dev.flashback_v04.fragments;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
@@ -18,6 +19,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.dev.flashback_v04.*;
 import com.dev.flashback_v04.activities.MainActivity;
@@ -101,7 +103,6 @@ public class ShowThreadsFragment extends ListFragment {
 		protected void onPostExecute(String response) {
 			super.onPostExecute(response);
 			if(response != null) {
-				hasErrors = true;
 				mErrorHandler.handleError(response);
 			} else {
 				hasErrors = false;
@@ -112,10 +113,13 @@ public class ShowThreadsFragment extends ListFragment {
 	private ContentParserTask contentParserTask;
     private Callback<HashMap<String, String>> threadFetched;
 	private Callback<HashMap<String, String>> forumFetched;
+	private int POSTS_PER_PAGE = 12;
+
 
 	private ErrorHandler mErrorHandler;
 	private boolean hasErrors;
 	private String errorMessage;
+	private RelativeLayout mErrorLayout;
 
 	private ShowThreadsAdapter mAdapter;
 	int selected_page;
@@ -161,10 +165,18 @@ public class ShowThreadsFragment extends ListFragment {
 		searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
 			@Override
 			public boolean onQueryTextSubmit(String searchString) {
-				int forumId = Integer.parseInt(forum_id);
-				String query = "https://www.flashback.org/sok/"+ searchString +"?f=" + forumId;
-				query = query.replace(" ", "+");
-				((MainActivity)mActivity).searchForum(query);
+				int forumId = -1;
+				try {
+					forumId = Integer.parseInt(forum_id);
+				} catch (NumberFormatException e) {}
+
+				if(forumId != -1) {
+					String query = "https://www.flashback.org/sok/" + searchString + "?f=" + forumId;
+					query = query.replace(" ", "+");
+					((MainActivity) mActivity).searchForum(query);
+				} else {
+					Toast.makeText(mActivity, "Hittade inte ForumId. Kunde inte söka.", Toast.LENGTH_SHORT).show();
+				}
 				return true;
 			}
 
@@ -190,6 +202,7 @@ public class ShowThreadsFragment extends ListFragment {
                 Bundle bundle = new Bundle();
 				bundle.putString("ForumUrl", base_url);
 				bundle.putString("ForumName", forum_name);
+				bundle.putInt("NumberOfPages", -1);
 				((MainActivity)mActivity).onOptionSelected(item.getItemId(), bundle);
                 break;
         }
@@ -203,7 +216,7 @@ public class ShowThreadsFragment extends ListFragment {
         outState.putString("Forumid", forum_id);
         outState.putString("ForumName", forum_name);
         outState.putInt("SelectedPage", selected_page);
-        outState.putInt("NumPages", num_pages);
+        outState.putInt("NumberOfPages", num_pages);
         outState.putSerializable("AdapterForumValues", mAdapter.getForums());
         outState.putSerializable("AdapterThreadValues", mAdapter.getThreads());
         super.onSaveInstanceState(outState);
@@ -240,10 +253,9 @@ public class ShowThreadsFragment extends ListFragment {
 		mErrorHandler = new ErrorHandler() {
 			@Override
 			public void handleError(String errormessage) {
-				if(hasErrors) {
-					errorMessage = errormessage;
-					showErrorBox(null);
-				}
+				hasErrors = true;
+				errorMessage = errormessage;
+				showErrorBox();
 			}
 		};
 
@@ -260,17 +272,17 @@ public class ShowThreadsFragment extends ListFragment {
             forum_id = savedInstanceState.getString("ForumId");
             forum_name = savedInstanceState.getString("ForumName");
             selected_page = savedInstanceState.getInt("SelectedPage");
-            num_pages = savedInstanceState.getInt("NumPages");
+            num_pages = savedInstanceState.getInt("NumberOfPages");
         } else {
             try {
-                num_pages = getArguments().getInt("NumPages");
+                num_pages = getArguments().getInt("NumberOfPages");
                 base_url = getArguments().getString("Url");
                 forum_url = getArguments().getString("Url");
-                forum_id = forum_url.split("/f", 2)[1];
+                forum_id = forum_url.split("f=", 2)[1];
                 forum_name = getArguments().getString("ForumName");
                 // +1 Because the pages start their index at 1. 0 works, but it just shows the first page of threads, so if you scrolled the next page would be the same as the first.
                 selected_page = getArguments().getInt("index") + 1;
-                forum_url = forum_url.concat("p"+selected_page);
+                forum_url = forum_url.concat("&page="+selected_page);
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
@@ -279,22 +291,25 @@ public class ShowThreadsFragment extends ListFragment {
         setListAdapter(mAdapter);
     }
 
-	private void showErrorBox(View v) {
-		final RelativeLayout errorlayout = (v != null) ? (RelativeLayout)v.findViewById(R.id.errorlayout) : (RelativeLayout)getView().findViewById(R.id.errorlayout);
-		if(errorlayout.getVisibility() != View.VISIBLE) {
-			final Button retrybutton = (Button) errorlayout.findViewById(R.id.retrybutton);
-			retrybutton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View view) {
-					errorlayout.setVisibility(View.GONE);
-					mAdapter.getThreads().clear();
-					mAdapter.getForums().clear();
-					mAdapter.notifyDataSetChanged();
-					getContent();
-				}
-			});
-			errorlayout.setVisibility(View.VISIBLE);
-			((TextView) errorlayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+	private void showErrorBox() {
+		if(mErrorLayout != null) {
+			if(mErrorLayout.getVisibility() != View.VISIBLE) {
+				final Button retrybutton = (Button) mErrorLayout.findViewById(R.id.retrybutton);
+				retrybutton.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						mErrorLayout.setVisibility(View.GONE);
+						mAdapter.getThreads().clear();
+						mAdapter.getForums().clear();
+						mAdapter.notifyDataSetChanged();
+						getContent();
+					}
+				});
+				mErrorLayout.setVisibility(View.VISIBLE);
+				((TextView) mErrorLayout.findViewById(R.id.errorlayoutmessage)).setText(errorMessage);
+			}
+		} else {
+			Toast.makeText(mActivity, errorMessage, Toast.LENGTH_SHORT).show();
 		}
 	}
 
@@ -311,6 +326,7 @@ public class ShowThreadsFragment extends ListFragment {
 
         header = (TextView)view.findViewById(R.id.headerleft);
         headerright = (TextView)view.findViewById(R.id.headerright);
+		mErrorLayout = (RelativeLayout)view.findViewById(R.id.errorlayout);
 
         try {
             showthisname = forum_name;
@@ -320,7 +336,7 @@ public class ShowThreadsFragment extends ListFragment {
         }
 
 		if(hasErrors) {
-			showErrorBox(view);
+			showErrorBox();
 		}
 
         header.setText(showthisname);
@@ -345,15 +361,27 @@ public class ShowThreadsFragment extends ListFragment {
 		if(mAdapter.getForums().size() > position) {
 			String url = mAdapter.getForums().get(position).get("ForumLink");
             String forumname = mAdapter.getForums().get(position).get("ForumName");
-			((MainActivity)mActivity).openForum(url, forumname);
+			int numThreads = Integer.parseInt(mAdapter.getForums().get(position).get("NumberOfThreads"));
+			int numPages = (int)Math.ceil(numThreads / 50.0);
+
+			((MainActivity)mActivity).openForum(url, -1, forumname);
 		} else {
 			String url = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadLink");
 			String threadname = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadName");
-			try {
-				((MainActivity)mActivity).openThread(url, 0, threadname);
-			} catch(Exception e) {
-				e.printStackTrace();
+			String numPosts = mAdapter.getThreads().get(position-mAdapter.getForums().size()).get("ThreadNumReplies");
+			int pageCount = 1;
+
+			SharedPreferences preferences = mActivity.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+			POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+			if(!numPosts.equals("-")) {
+				pageCount = (int) (Math.ceil((Integer.parseInt(numPosts.replaceAll("\\s+", "")) + 1) / (float)POSTS_PER_PAGE));
+
+				((MainActivity)mActivity).openThread(url, pageCount, 1, threadname);
+			} else {
+				((MainActivity)mActivity).openThread(url, 0, 1, threadname);
 			}
+
 		}
 	}
 

@@ -1,6 +1,7 @@
 package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,8 +23,9 @@ public class NewPostsAdapter extends BaseAdapter {
     private final LayoutInflater mInflater;
     ArrayList<HashMap<String, String>> mItems;
 	private Context mContext;
+	private int POSTS_PER_PAGE;
 
-    public NewPostsAdapter(Context context) {
+	public NewPostsAdapter(Context context) {
 		mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mItems = new ArrayList<HashMap<String, String>>();
@@ -67,10 +69,16 @@ public class NewPostsAdapter extends BaseAdapter {
 		lastPage = (ImageView)view.findViewById(R.id.current_gotolastpage);
 		final String name = mItems.get(i).get("Headline");
 		final String url = mItems.get(i).get("Link");
+		String postCount = mItems.get(i).get("Replies");
+
+		SharedPreferences preferences = mContext.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+		POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+		final int pageCount = (int)(Math.ceil((Integer.parseInt(postCount.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
 		lastPage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
-				((MainActivity)mContext).openThread(url, -2, name);
+				((MainActivity)mContext).openThread(url, pageCount, pageCount, name);
 			}
 		});
 

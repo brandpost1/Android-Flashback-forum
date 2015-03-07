@@ -26,6 +26,7 @@ public class PrivateMessagingPager extends Fragment {
     private PrivateMessagesPagingAdapter mPrivateMessagesPagingAdapter;
     private ViewPager mViewPager;
 
+
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
@@ -36,6 +37,7 @@ public class PrivateMessagingPager extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
 		setHasOptionsMenu(true);
         mPrivateMessagesPagingAdapter = new PrivateMessagesPagingAdapter(getChildFragmentManager());
+
         super.onCreate(savedInstanceState);
     }
 
@@ -43,10 +45,37 @@ public class PrivateMessagingPager extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.messages_layout, null);
         mViewPager = (ViewPager) v.findViewById(R.id.viewpager);
+		mViewPager.setOffscreenPageLimit(1);
         mViewPager.setAdapter(mPrivateMessagesPagingAdapter);
+
+		mViewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+			@Override
+			public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+			}
+
+			@Override
+			public void onPageSelected(int position) {
+				updateFragment();
+			}
+
+			@Override
+			public void onPageScrollStateChanged(int state) {
+
+			}
+		});
 
         return v;
     }
+
+	private void updateFragment() {
+		// Could break if tag is changed.
+		Fragment page = getChildFragmentManager().findFragmentByTag("android:switcher:" + R.id.viewpager + ":" + mViewPager.getCurrentItem());
+
+		if (page != null) {
+			((PMFragment)page).getData();
+		}
+	}
 
     @Override
     public void onPause() {
@@ -81,6 +110,7 @@ public class PrivateMessagingPager extends Fragment {
 					inboxbundle.putInt("PageNumber", 1);
 					inboxbundle.putInt("NumPages", 1);
 					inboxbundle.putInt("FragmentType", 0);
+					inboxbundle.putBoolean("ShowInstant", true);
                     // Inbox fragment
                     PMFragment inbox = new PMFragment();
 					inbox.setArguments(inboxbundle);
@@ -90,6 +120,7 @@ public class PrivateMessagingPager extends Fragment {
 					outboxbundle.putInt("PageNumber", 1);
 					outboxbundle.putInt("NumPages", 1);
 					outboxbundle.putInt("FragmentType", -1);
+					outboxbundle.putBoolean("ShowInstant", false);
                     // Outbox fragment
 					PMFragment outbox = new PMFragment();
 					outbox.setArguments(outboxbundle);

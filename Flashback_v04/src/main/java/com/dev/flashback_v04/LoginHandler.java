@@ -2,38 +2,26 @@ package com.dev.flashback_v04;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
-
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
-
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
-
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-
 import java.net.HttpURLConnection;
-
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +45,7 @@ public class LoginHandler {
 		try	{
 			connection = (HttpsURLConnection)url.openConnection();
 			connection.setConnectTimeout(timeout);
-			connection.setReadTimeout(timeout*2);
+			connection.setReadTimeout(timeout * 2);
 
 			response = connection.getInputStream();
 			current = Jsoup.parse(response, null, site);
@@ -90,7 +78,7 @@ public class LoginHandler {
 		//connection.setDoOutput(true);
 		connection.setRequestMethod("GET");
 		connection.setConnectTimeout(timeout);
-		connection.setReadTimeout(timeout*2);
+		connection.setReadTimeout(timeout * 2);
 
 		// Get sessioncookie
 		Map<String, String> cookies = cookie;
@@ -105,7 +93,7 @@ public class LoginHandler {
 
 		// Get cookies from response
 		List<String> newcookies = connection.getHeaderFields().get("Set-Cookie");
-		Map<String, List<String>> newcookies2 = connection.getHeaderFields();
+
 		if(newcookies != null) {
 			// Get "old" cookies
 			Map<String, String> oldcookies = getSessionCookie(context);
@@ -236,7 +224,7 @@ public class LoginHandler {
             appPrefs.edit().putString("UserName", userName).commit();
 
             setSessionCookie(mCookies, context);
-            //getPreferences(context);
+            getPreferences(context);
             return true;
         }
 
@@ -295,18 +283,7 @@ public class LoginHandler {
 
 	}
 
-    /**
-     * @param url
-     * Skicka in en url av formen ,https://www.flashback.org/t2223883", vilket är en tråd i forumet.
-     * Siffrorna i slutet kommer att plockas ut och användas som trådId för att skicka svaret.
-     * @param message
-     * Meddelandet som ska skickas.
-     * Newline representeras av "\n" i det som skickas in, och kommer att ersättas med "<br />"
-     * @param context
-     * @throws IOException
-     * Om något hände när svaret skickades, så som anslutningsproblem.
-     */
-    public static boolean postReply(String url, String message, Context context) throws IOException {
+    public static boolean postReply(Bundle bundle, Context context) throws IOException {
         if(loggedIn(context)) {
             HttpClient client = new DefaultHttpClient();
             HttpPost post = new HttpPost("https://www.flashback.org/newreply.php");
@@ -315,8 +292,8 @@ public class LoginHandler {
             String userId = Integer.toString(SharedPrefs.getPreference(context, "user", "ID"));
 
             // Get post-id from url
-            int indexOf = url.indexOf("/t")+2;
-            String threadId = url.substring(indexOf);
+            int indexOf = bundle.getString("ThreadUrl").indexOf("t=")+2;
+            String threadId = bundle.getString("ThreadUrl").substring(indexOf);
 
             // Get cookies, and remake to appropriate format.
             Map<String, String> cookies = getSessionCookie(context);
@@ -326,7 +303,7 @@ public class LoginHandler {
             //message = message.replace("\n", "<br />");
 
             BasicNameValuePair[] params = {
-                    new BasicNameValuePair("message", message),
+                    new BasicNameValuePair("message", bundle.getString("Message")),
                     new BasicNameValuePair("wysiwyg", "0"),
                     new BasicNameValuePair("s", ""),
                     new BasicNameValuePair("do", "postreply"),
@@ -337,9 +314,9 @@ public class LoginHandler {
                     new BasicNameValuePair("loggedinuser", userId),
                     new BasicNameValuePair("sbutton", "Skicka svar"),
                     //new BasicNameValuePair("signature", "1"),
-                    new BasicNameValuePair("parseurl", "1"),
-                    new BasicNameValuePair("disablesmilies", "0"),
-                    //new BasicNameValuePair("emailupdate", "9999"),    // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
+                    new BasicNameValuePair("parseurl", bundle.getString("ConvertLinks")),
+                    new BasicNameValuePair("disablesmilies", bundle.getString("HideSmileys")),
+                    new BasicNameValuePair("emailupdate", "9999"),    // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
                     new BasicNameValuePair("stoken", ""),
             };
 
@@ -358,6 +335,7 @@ public class LoginHandler {
 
             // To:https://www.flashback.org/showthread.php?p=47728039&posted=1#p47728039 with status: 301 Show explanation HTTP/1.1 301 Moved Permanently
             // "Location:"
+
             try {
                 HttpResponse resp = client.execute(post);
                 //String body = EntityUtils.toString(resp.getEntity(), "UTF-8");
@@ -370,6 +348,7 @@ public class LoginHandler {
                 e.printStackTrace();
                 throw new IOException("There was a problem with the connection.");
             }
+
         } else {
             return false;
         }
@@ -429,7 +408,7 @@ public class LoginHandler {
 				params.put("sbutton", "Spara ändringar");
 				params.put("signature", "1");
 				params.put("parseurl", "1");
-				//params.put("emailupdate", "9999");
+			    params.put("emailupdate", "9999");
 				//params.put("folderid", "0");
 				params.put("stoken", "");
 
@@ -764,7 +743,7 @@ public class LoginHandler {
 		return false;
 	}
 
-    public static boolean postNewThread(String inForum, String subject, String message, Context context) throws IOException{
+    public static boolean postNewThread(Bundle bundle, Context context) throws IOException{
         if(loggedIn(context)) {
             URL url = null;
             HttpsURLConnection connection = null;
@@ -795,9 +774,12 @@ public class LoginHandler {
             String userId = Integer.toString(SharedPrefs.getPreference(context, "user", "ID"));
 
 
-            String forumId = inForum;
-            String postSubject = subject;
-            String postMessage = message;
+            String forumId = bundle.getString("ForumId");
+            String postSubject = bundle.getString("ThreadHeader");
+            String postMessage = bundle.getString("ThreadMessage");
+			String hideSmileys = bundle.getString("HideSmileys");
+			String convertLinks = bundle.getString("ConvertLinks");
+			String showSignature = bundle.getString("ShowSignature");
 
             // Some headers for first request
             //connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36");
@@ -837,10 +819,10 @@ public class LoginHandler {
             params.put("loggedinuser", userId);
             params.put("s", hash);
             params.put("sbutton", "Skicka nytt ämne");
-            params.put("signature", "1");
-            params.put("parseurl", "1");
+            params.put("signature", showSignature);
+            params.put("parseurl", convertLinks);
             params.put("emailupdate", "9999");  // 9999, 0, 1, 2, 3 - Prenumerera inte, Inget epost, omedelbar epost, dagligt epost, veckovis epost
-            params.put("disablesmilies", "0"); //Optional 1 = disable)
+            params.put("disablesmilies", hideSmileys); //Optional 1 = disable)
             params.put("folderid", "0");
             params.put("stoken", "");
 

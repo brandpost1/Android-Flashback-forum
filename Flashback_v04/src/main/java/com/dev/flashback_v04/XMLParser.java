@@ -80,6 +80,8 @@ public class XMLParser {
 							categories.get(categories.size()-1).put("Name", parser.nextText());
 						} else if(tagName.equals("category_link")) {
 							categories.get(categories.size()-1).put("Link", parser.nextText());
+						} else if(tagName.equals("color")) {
+							categories.get(categories.size()-1).put("Color", parser.nextText());
 						}
 
 						break;

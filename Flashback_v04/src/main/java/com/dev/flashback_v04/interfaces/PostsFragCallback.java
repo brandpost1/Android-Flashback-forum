@@ -5,6 +5,5 @@ package com.dev.flashback_v04.interfaces;
  */
 public interface PostsFragCallback<T> {
     public void sendQuote(T object);
-    public void sendPlusQuote(T object);
 
 }

@@ -3,6 +3,7 @@ package com.dev.flashback_v04.fragments.special;
 import android.app.Activity;
 import android.content.Context;
 
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -32,7 +33,7 @@ import java.util.HashMap;
  */
 public class CurrentThreadsFragment extends ListFragment {
 
-    public class CurrentThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
+	public class CurrentThreadsParserTask extends AsyncTask<String, HashMap<String, String>, Boolean> {
 
         Context mContext;
         Parser mParser;
@@ -72,7 +73,7 @@ public class CurrentThreadsFragment extends ListFragment {
     private CurrentThreadsParserTask threadsParserTask;
     private CurrentThreadsAdapter mAdapter;
     private Activity mActivity;
-
+	private int POSTS_PER_PAGE;
 
     private Callback threadFetched;
 
@@ -134,11 +135,17 @@ public class CurrentThreadsFragment extends ListFragment {
     public void onListItemClick(ListView l, View v, int position, long id) {
         String threadname;
         String url;
-
+		String postCount;
+		int pageCount;
         try {
+			SharedPreferences preferences = mActivity.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+			POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+			postCount = ((HashMap<String, String>)mAdapter.getItem(position)).get("Replies");
+			pageCount = (int)(Math.ceil((Integer.parseInt(postCount.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
             threadname = ((HashMap<String, String>)mAdapter.getItem(position)).get("Headline");
             url = ((HashMap<String, String>)mAdapter.getItem(position)).get("Link");
-            ((MainActivity)getActivity()).openThread(url, 0, threadname);
+            ((MainActivity)getActivity()).openThread(url, pageCount, 1, threadname);
         } catch (NullPointerException e) {
             e.printStackTrace();
         } catch (IndexOutOfBoundsException e) {

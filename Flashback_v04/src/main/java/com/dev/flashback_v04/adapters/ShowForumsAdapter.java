@@ -25,8 +25,10 @@ import java.util.List;
 
 public class ShowForumsAdapter extends BaseAdapter {
 
-	static LayoutInflater mInflater;
-    ArrayList<HashMap<String, String>> mItems;
+	private LayoutInflater mInflater;
+	private float forumTitleTextSize;
+	private float forumInfoTextSize;
+	private ArrayList<HashMap<String, String>> mItems;
 
 	Context mContext;
 
@@ -34,6 +36,11 @@ public class ShowForumsAdapter extends BaseAdapter {
 		mContext = context;
 		mInflater = ((Activity)mContext).getLayoutInflater();
         mItems = new ArrayList<HashMap<String, String>>();
+
+		// Get textsize values from preferences
+		SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		forumTitleTextSize = Float.parseFloat(appPrefs.getString("forumname_fontsize", "18"));
+		forumInfoTextSize = Float.parseFloat(appPrefs.getString("foruminfo_fontsize", "14"));
 	}
 
 	@Override
@@ -60,6 +67,9 @@ public class ShowForumsAdapter extends BaseAdapter {
 		}
 		forumTitle = (TextView)view.findViewById(R.id.forumTitle);
 		forumInfo = (TextView)view.findViewById(R.id.forumInfo);
+
+		forumTitle.setTextSize(forumTitleTextSize);
+		forumInfo.setTextSize(forumInfoTextSize);
 		forumTitle.setText(mItems.get(i).get("ForumName"));
 		forumInfo.setText(mItems.get(i).get("ForumInfo"));
 

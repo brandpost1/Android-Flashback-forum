@@ -1,6 +1,7 @@
 package com.dev.flashback_v04.fragments;
 
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
@@ -27,12 +28,19 @@ public class ShowCategoriesFragment extends ListFragment {
 	ShowCategoriesAdapter mAdapter;
 	ArrayList<String> categories = new ArrayList<String>();
     ArrayList<String> categorynames = new ArrayList<String>();
+	MainActivity mActivity;
 
 	public ShowCategoriesFragment() {
 
 	}
 
-    @Override
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		mActivity = (MainActivity)activity;
+	}
+
+	@Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putStringArrayList("Categories", categories);
@@ -69,7 +77,7 @@ public class ShowCategoriesFragment extends ListFragment {
 	public void onListItemClick(ListView l, View v, int position, long id) {
 		super.onListItemClick(l, v, position, id);
 		String url = categories.get(position);
-		((MainActivity)getParentFragment().getActivity()).openCategory(url, position+1, categories, categorynames);
+		mActivity.openCategory(url, position+1, categories, categorynames);
 	}
 
 

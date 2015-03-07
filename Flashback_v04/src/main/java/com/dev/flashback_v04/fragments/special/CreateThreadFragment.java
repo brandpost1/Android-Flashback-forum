@@ -13,6 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,14 +26,17 @@ import com.dev.flashback_v04.asynctasks.special.NewThreadTask;
  */
 public class CreateThreadFragment extends Fragment {
 
-    ActionBarActivity mActivity;
-    EditText threadHeader;
-    EditText threadMessage;
-    String forumID;
-    String forumName;
-    String forumLink;
+	private ActionBarActivity mActivity;
+	private EditText threadHeader;
+	private EditText threadMessage;
+	private String forumID;
+	private String forumName;
+	private String forumLink;
+	private CheckBox showSignature;
+	private CheckBox convertLinks;
+	private CheckBox hideSmileys;
 
-    @Override
+	@Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         setHasOptionsMenu(true);
@@ -63,6 +67,10 @@ public class CreateThreadFragment extends Fragment {
         threadHeader = (EditText)v.findViewById(R.id.newthread_header_textbox);
         threadMessage = (EditText)v.findViewById(R.id.newthread_message_textbox);
 
+		showSignature = (CheckBox)v.findViewById(R.id.newthread_showsignature);
+		convertLinks = (CheckBox)v.findViewById(R.id.newthread_url_2_link_chkbox);
+		hideSmileys = (CheckBox)v.findViewById(R.id.newthread_smiley_2_text_chkbox);
+
         // Set header as current forum name
         forumName.setText(this.forumName);
 
@@ -86,6 +94,9 @@ public class CreateThreadFragment extends Fragment {
                 bundle.putString("ThreadMessage", threadMessage.getText().toString());
                 bundle.putString("ForumUrl", forumLink);
                 bundle.putString("ForumName", forumName);
+				bundle.putString("ShowSignature", showSignature.isChecked() ? "1" : "0");
+				bundle.putString("ConvertLinks", convertLinks.isChecked() ? "1" : "0");
+				bundle.putString("HideSmileys", hideSmileys.isChecked() ? "1" : "0");
 
 				// Close keyboard
 				InputMethodManager imm = (InputMethodManager)mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);

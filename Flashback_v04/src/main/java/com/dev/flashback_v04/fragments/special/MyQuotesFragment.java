@@ -91,7 +91,7 @@ public class MyQuotesFragment extends ListFragment {
             public void onClick(View view) {
                 String forumUrl = (String)view.getTag(R.id.OPEN_FORUM);
                 String forumName = (String)view.getTag(R.id.OPEN_FORUM_NAME);
-                ((MainActivity)mActivity).openForum(forumUrl, forumName);
+                ((MainActivity)mActivity).openForum(forumUrl, -1, forumName);
             }
         };
 
@@ -150,6 +150,6 @@ public class MyQuotesFragment extends ListFragment {
 		String threadName = (String)v.getTag(R.id.OPEN_THREAD_NAME);
 
 		// -1 because the page is unknown from this type of url
-		((MainActivity)mActivity).openThread(threadUrl, -1, threadName);
+		((MainActivity)mActivity).openThread(threadUrl, 0, 0, threadName);
     }
 }

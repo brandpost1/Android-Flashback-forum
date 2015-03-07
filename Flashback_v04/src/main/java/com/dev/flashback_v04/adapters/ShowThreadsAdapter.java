@@ -1,9 +1,10 @@
 package com.dev.flashback_v04.adapters;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +14,6 @@ import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
-
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,15 +26,20 @@ public class ShowThreadsAdapter extends BaseAdapter {
 
 	private static final int TYPE_THREAD = 0;
 	private static final int TYPE_FORUM = 1;
+	private float forumTitleTextSize;
+	private float forumInfoTextSize;
+	private float threadTitleTextSize;
+	private float threadInfoTextSize;
 
-	LayoutInflater mInflater;
+
+	private LayoutInflater mInflater;
 
 	// All threads on the current page
-	ArrayList<HashMap<String, String>> mThreads;
+	private ArrayList<HashMap<String, String>> mThreads;
 	// Any subforums that might be present
-	ArrayList<HashMap<String, String>> mForums;
+	private ArrayList<HashMap<String, String>> mForums;
 
-	Context mContext;
+	private Context mContext;
     private ArrayList<HashMap<String, String>> mItems;
 
     public ShowThreadsAdapter(Context context) {
@@ -42,6 +47,13 @@ public class ShowThreadsAdapter extends BaseAdapter {
 		mContext = context;
         mForums = new ArrayList<HashMap<String, String>>();
         mThreads = new ArrayList<HashMap<String, String>>();
+
+		// Get textsize values from preferences
+		SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		forumTitleTextSize = Float.parseFloat(appPrefs.getString("forumname_fontsize", "18"));
+		forumInfoTextSize = Float.parseFloat(appPrefs.getString("foruminfo_fontsize", "14"));
+		threadTitleTextSize = Float.parseFloat(appPrefs.getString("threadtitle_fontsize", "18"));
+		threadInfoTextSize = Float.parseFloat(appPrefs.getString("threadinfo_fontsize", "14"));
 	}
 
 	@Override
@@ -102,15 +114,17 @@ public class ShowThreadsAdapter extends BaseAdapter {
 					view = mInflater.inflate(R.layout.thread_item, null);
 					break;
 			}
-            //TODO: Maybe this can change color for threads depending on if it's locked/pinned/etc
-            img = (ImageView)view.findViewById(R.id.imageView);
-            img.setBackgroundColor(Color.TRANSPARENT);
 		}
 		switch (type) {
 			case TYPE_FORUM:
 				forumTitle = (TextView)view.findViewById(R.id.forumTitle);
 				forumInfo = (TextView)view.findViewById(R.id.forumInfo);
 
+				// Set fontsize
+				forumTitle.setTextSize(forumTitleTextSize);
+				forumInfo.setTextSize(forumInfoTextSize);
+
+				// Set value
 				forumTitle.setText(mForums.get(position).get("ForumName"));
 				forumInfo.setText(mForums.get(position).get("ForumInfo"));
 				break;
@@ -124,6 +138,19 @@ public class ShowThreadsAdapter extends BaseAdapter {
                 locked = (ImageView)view.findViewById(R.id.locked);
 				lastPage = (ImageView)view.findViewById(R.id.thread_gotolastpage);
 
+				// Set fontsize
+				threadTitle.setTextSize(threadTitleTextSize);
+				threadAuthor.setTextSize(threadInfoTextSize);
+				threadViews.setTextSize(threadInfoTextSize);
+				threadNumReplies.setTextSize(threadInfoTextSize);
+				lastPost.setTextSize(threadInfoTextSize);
+
+				// Set value
+				((TextView)view.findViewById(R.id.authorText)).setTextSize(threadInfoTextSize);
+				((TextView)view.findViewById(R.id.threadReplies)).setTextSize(threadInfoTextSize);
+				((TextView)view.findViewById(R.id.threadViews)).setTextSize(threadInfoTextSize);
+
+
 				final String url = getThreads().get(position).get("ThreadLink");
 				final int numpages = Integer.parseInt(getThreads().get(position).get("ThreadNumPages"));
 				final String threadname = getThreads().get(position).get("ThreadName");
@@ -136,7 +163,7 @@ public class ShowThreadsAdapter extends BaseAdapter {
 						args.putString("Url", url);
 						args.putString("ThreadName", threadname);
 
-						((MainActivity)mContext).onOptionSelected(R.id.gotolastpage, args);
+						((MainActivity)mContext).openThread(url, numpages, numpages, threadname);
 					}
 				});
 

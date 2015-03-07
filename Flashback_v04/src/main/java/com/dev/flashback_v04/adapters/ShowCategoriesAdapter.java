@@ -1,11 +1,15 @@
 package com.dev.flashback_v04.adapters;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.dev.flashback_v04.R;
@@ -23,11 +27,12 @@ import java.util.HashMap;
  */
 public class ShowCategoriesAdapter extends BaseAdapter {
 
-	Context mContext;
-	ArrayList<HashMap<String, String>> mCategories;
-	XmlPullParser parser;
-	XMLParser mParser;
-	LayoutInflater mInflater;
+	private Context mContext;
+	private ArrayList<HashMap<String, String>> mCategories;
+	private XmlPullParser parser;
+	private XMLParser mParser;
+	private LayoutInflater mInflater;
+	private float categoryTextSize;
 
 	public ShowCategoriesAdapter(Context context) {
 
@@ -35,6 +40,10 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 		mCategories = new ArrayList<HashMap<String, String>>();
 		mParser = new XMLParser(context);
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+		// Get textsize value from preferences
+		SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		categoryTextSize = Float.parseFloat(appPrefs.getString("category_fontsize", "22"));
 
 		try {
 			parser = mParser.getLocalXML("categories_xml.xml");
@@ -68,11 +77,18 @@ public class ShowCategoriesAdapter extends BaseAdapter {
 	@Override
 	public View getView(int i, View view, ViewGroup viewGroup) {
 		TextView big;
+		ImageView color;
 
 		if(view == null) {
-			view = mInflater.inflate(R.layout.category_item,null);
+			view = mInflater.inflate(R.layout.category_item, null);
 		}
-		big = (TextView)view.findViewById(R.id.textView);
+		big = (TextView)view.findViewById(R.id.category_textview);
+		color = (ImageView)view.findViewById(R.id.cat_color);
+
+		String colorstring = mCategories.get(i).get("Color");
+		int clr = Color.parseColor(colorstring);
+		color.setBackgroundColor(clr);
+		big.setTextSize(categoryTextSize);
 		big.setText(mCategories.get(i).get("Name"));
 
 		return view;

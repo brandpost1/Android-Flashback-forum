@@ -1,7 +1,9 @@
 package com.dev.flashback_v04.adapters.special;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,13 +24,16 @@ public class CurrentThreadsAdapter extends BaseAdapter {
     public static final int ITEM_HEADER = 0;
     public static final int ITEM_ROW = 1;
     private final LayoutInflater mInflater;
-    ArrayList<HashMap<String, String>> mItems;
+    private ArrayList<HashMap<String, String>> mItems;
 	private Context mContext;
+	private int POSTS_PER_PAGE = 12;
 
-    public CurrentThreadsAdapter(Context context) {
+
+	public CurrentThreadsAdapter(Context context) {
 		mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mItems = new ArrayList<HashMap<String, String>>();
+
     }
 
     @Override
@@ -72,7 +77,7 @@ public class CurrentThreadsAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int i, View view, ViewGroup viewGroup) {
+    public View getView(final int i, View view, ViewGroup viewGroup) {
         TextView header = null;
         TextView threadName = null;
         TextView views = null;
@@ -108,17 +113,18 @@ public class CurrentThreadsAdapter extends BaseAdapter {
                 sourceForum = (TextView)view.findViewById(R.id.sourceForum);
 				openLastPage = (ImageView)view.findViewById(R.id.current_gotolastpage);
 
-				final String threadname = ((HashMap<String, String>)getItem(i)).get("Headline");
-				final String url = ((HashMap<String, String>)getItem(i)).get("Link");
-
 				openLastPage.setOnClickListener(new View.OnClickListener() {
 					@Override
 					public void onClick(View view) {
-						Bundle args = new Bundle();
-						args.putInt("LastPage", -2);
-						args.putString("Url", url);
-						args.putString("ThreadName", threadname);
-						((MainActivity)mContext).onOptionSelected(R.id.gotolastpage, args);
+						String threadname = ((HashMap<String, String>)getItem(i)).get("Headline");
+						String url = ((HashMap<String, String>)getItem(i)).get("Link");
+						String postCount = ((HashMap<String, String>)getItem(i)).get("Replies");
+
+						SharedPreferences preferences = mContext.getSharedPreferences("APP_SETTINGS", Context.MODE_PRIVATE);
+						POSTS_PER_PAGE = preferences.getInt("Thread_Max_Posts_Page", 12);
+
+						int pageCount = (int)(Math.ceil((Integer.parseInt(postCount.replaceAll("\\s+","")) + 1) / (float)POSTS_PER_PAGE));
+						((MainActivity)mContext).openThread(url, pageCount, pageCount, threadname);
 					}
 				});
 

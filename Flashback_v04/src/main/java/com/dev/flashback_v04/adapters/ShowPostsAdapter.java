@@ -3,30 +3,29 @@ package com.dev.flashback_v04.adapters;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-
 import android.graphics.drawable.Drawable;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-
 import android.support.v7.widget.PopupMenu;
 import android.text.InputType;
 import android.text.Spannable;
-
 import android.text.method.LinkMovementMethod;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-
-import com.dev.flashback_v04.*;
+import com.dev.flashback_v04.ImageAdder;
+import com.dev.flashback_v04.LoginHandler;
+import com.dev.flashback_v04.Post;
+import com.dev.flashback_v04.R;
 import com.dev.flashback_v04.activities.MainActivity;
 import com.dev.flashback_v04.interfaces.PostsFragCallback;
 import com.squareup.picasso.Picasso;
@@ -54,6 +53,11 @@ public class ShowPostsAdapter extends BaseAdapter {
     static final int POST_QUOTE_ANONHEADER = 11;
     static final int BLOCKED_POST = 12;
 
+	private float headerTextSize;
+	private float quoteheaderTextSize;
+	private float messageTextSize;
+
+
 	private Context mContext;
 	private LayoutInflater mInflater;
 	ArrayList<Post> mPostArrayList;
@@ -70,12 +74,21 @@ public class ShowPostsAdapter extends BaseAdapter {
 
     public static HashMap<String, String[]> mPlusQuotes = new HashMap<String, String[]>();
 
-	public ShowPostsAdapter(Context context) {
+	public ShowPostsAdapter(Context context, PostsFragCallback<Bundle> postsFragCallback) {
 		mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		mContext = context;
 		mUserPopups = new ArrayList<PopupMenu>();
 		rows = new ArrayList<String[]>();
 		mPostArrayList = new ArrayList<Post>();
+
+		mCallback = postsFragCallback;
+
+		// Get textsize values from preferences
+		SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		headerTextSize = Float.parseFloat(appPrefs.getString("post_headers_fontsize", "14"));
+		quoteheaderTextSize = Float.parseFloat(appPrefs.getString("post_quoteheader_fontsize", "14"));
+		messageTextSize = Float.parseFloat(appPrefs.getString("post_fontsize", "14"));
+
 	}
 
 	@Override
@@ -164,9 +177,8 @@ public class ShowPostsAdapter extends BaseAdapter {
         // Spoiler
         TextView spoiler = null;
         // Footer
-        ImageView quotePost = null;
+        Button quotePost = null;
         CheckBox plusQuote = null;
-        ImageView reportPost = null;
 		ImageView editPost = null;
         // Code
         TextView code = null;
@@ -214,7 +226,7 @@ public class ShowPostsAdapter extends BaseAdapter {
                     view = mInflater.inflate(R.layout.post_code_footer, null);
                     break;
                 case POST_FOOTER:
-                    view = mInflater.inflate(R.layout.post_footer, null);
+                    view = mInflater.inflate(R.layout.post_footer_test, null);
                     break;
             }
         }
@@ -224,6 +236,8 @@ public class ShowPostsAdapter extends BaseAdapter {
 				author = (TextView)view.findViewById(R.id.user_name);
 				date = (TextView)view.findViewById(R.id.post_date);
 				message = (TextView)view.findViewById(R.id.post_text);
+
+				message.setTextSize(messageTextSize);
 
 				// Set selectable if API > 11.
 				//TODO: Fix for < 11
@@ -253,11 +267,14 @@ public class ShowPostsAdapter extends BaseAdapter {
                 sharePost = (ImageView)view.findViewById(R.id.share_post);
 				String avatarUrl = mPostArrayList.get(Integer.parseInt(rows.get(position)[2])).getAvatarUrl();
 
+                // Get correct pixel value of 55dp. For the avatar.
+                float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60, mContext.getResources().getDisplayMetrics());
+
 				if(avatarUrl.isEmpty()) {
 					Picasso.with(mContext)
 							.load(R.drawable.ic_contact_picture)
 							.error(R.drawable.ic_contact_picture)
-							.resize(90, 90)
+							.resize((int)px, (int)px)
 							.centerCrop()
 							.placeholder(R.drawable.ic_contact_picture)
 							.into(avatar);
@@ -265,7 +282,7 @@ public class ShowPostsAdapter extends BaseAdapter {
 					Picasso.with(mContext)
 							.load(avatarUrl)
 							.error(R.drawable.ic_contact_picture)
-							.resize(90, 90)
+                            .resize((int)px, (int)px)
 							.centerCrop()
 							.placeholder(R.drawable.ic_contact_picture)
 							.into(avatar);
@@ -318,6 +335,7 @@ public class ShowPostsAdapter extends BaseAdapter {
                 break;
             case POST_MESSAGE:
                 message = (TextView)view.findViewById(R.id.post_text);
+				message.setTextSize(messageTextSize);
                 //message.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getStyledText(mContext, rows.get(position)[1]);
@@ -339,6 +357,8 @@ public class ShowPostsAdapter extends BaseAdapter {
                 break;
             case POST_SPOILER:
                 spoiler = (TextView)view.findViewById(R.id.post_spoiler_text_area);
+				spoiler.setTextSize(messageTextSize);
+
                 spoiler.setTag(R.id.SPOILER_MESSAGE, rows.get(position)[1]);
                 if(showSpoiler[position] == false) {
                     spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
@@ -372,16 +392,31 @@ public class ShowPostsAdapter extends BaseAdapter {
                 });
 
                 break;
+			case POST_CODE_HEADER:
+				TextView codeHeader = (TextView)view.findViewById(R.id.quote_header);
+				codeHeader.setTextSize(headerTextSize);
+				break;
             case POST_CODE_MESSAGE:
                 code = (TextView)view.findViewById(R.id.post_code_message_content);
+				code.setTextSize(messageTextSize);
+
                 code.setText(rows.get(position)[1]);
                 break;
             case POST_QUOTE_ANONHEADER:
                 // nothing
+				TextView anonQuoteHeader = (TextView)view.findViewById(R.id.quote_header);
+				anonQuoteHeader.setTextSize(headerTextSize);
                 break;
             case POST_QUOTE_HEADER:
                 try {
-                    quotefrom = (TextView)view.findViewById(R.id.post_quote_from_username);
+					TextView quoteHeader = (TextView)view.findViewById(R.id.quote_header);
+					TextView quoteFromText = (TextView)view.findViewById(R.id.post_quote_from_label);
+					quotefrom = (TextView)view.findViewById(R.id.post_quote_from_username);
+
+					quoteHeader.setTextSize(headerTextSize);
+                    quoteFromText.setTextSize(quoteheaderTextSize);
+					quotefrom.setTextSize(quoteheaderTextSize);
+
                     quotefrom.setText(rows.get(position)[1]);
                 } catch(NullPointerException e) {
 
@@ -389,6 +424,8 @@ public class ShowPostsAdapter extends BaseAdapter {
                 break;
             case POST_QUOTE_MESSAGE:
                 quote = (TextView)view.findViewById(R.id.post_quote_message_content);
+				quote.setTextSize(messageTextSize);
+
                 if(rows.get(position)[1] != null) {
                     Spannable smileymessage = ImageAdder.getStyledText(mContext, rows.get(position)[1]);
 					quote.setMovementMethod(LinkMovementMethod.getInstance());
@@ -404,7 +441,12 @@ public class ShowPostsAdapter extends BaseAdapter {
                 }
                 break;
             case POST_QUOTE_SPOILER:
+				TextView spoilerHeader = (TextView)view.findViewById(R.id.spoiler_label);
+				spoilerHeader.setTextSize(headerTextSize);
+
                 spoiler = (TextView)view.findViewById(R.id.post_quote_spoiler_text_area);
+				spoiler.setTextSize(messageTextSize);
+
                 spoiler.setTag(R.id.QUOTE_SPOILER_MESSAGE, rows.get(position)[1]);
                 if(showSpoiler[position] == false) {
                     spoiler.setText("SPOILER - KLICKA FÖR ATT VISA");
@@ -442,16 +484,14 @@ public class ShowPostsAdapter extends BaseAdapter {
                 // Nothing here atm
                 break;
             case POST_FOOTER:
-                quotePost = (ImageView)view.findViewById(R.id.quote);
+                quotePost = (Button)view.findViewById(R.id.quote);
                 plusQuote = (CheckBox)view.findViewById(R.id.plusquote);
-                reportPost = (ImageView)view.findViewById(R.id.report);
 				editPost = (ImageView)view.findViewById(R.id.edit_post);
 
                 // Show some Logged-in-only buttons
                 if(!LoginHandler.loggedIn(mContext)) {
 					quotePost.setVisibility(View.GONE);
 					plusQuote.setVisibility(View.GONE);
-					reportPost.setVisibility(View.GONE);
 					editPost.setVisibility(View.GONE);
 				}
 

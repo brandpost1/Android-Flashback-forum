@@ -25,6 +25,8 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
     Context mContext;
     ProgressDialog mDialog;
 
+	Bundle forwardBundle;
+
     public NewThreadTask(Context context, Bundle args) {
         forumId = args.getString("ForumId");
         forumLink = args.getString("ForumUrl");
@@ -34,6 +36,14 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
 
         mContext = context;
         mDialog = new ProgressDialog(mContext);
+
+		forwardBundle = new Bundle();
+		forwardBundle.putString("ForumId", args.getString("ForumId"));
+		forwardBundle.putString("ThreadHeader", threadHeader);
+		forwardBundle.putString("ThreadMessage", threadMessage);
+		forwardBundle.putString("ShowSignature", args.getString("ShowSignature"));
+		forwardBundle.putString("ConvertLinks", args.getString("ConvertLinks"));
+		forwardBundle.putString("HideSmileys", args.getString("HideSmileys"));
 
     }
 
@@ -55,7 +65,7 @@ public class NewThreadTask extends AsyncTask<String, String, Boolean> {
                 return success;
             }
             try {
-                success = LoginHandler.postNewThread(forumId, threadHeader, threadMessage, mContext);
+                success = LoginHandler.postNewThread(forwardBundle, mContext);
             } catch (IOException e) {
                 e.printStackTrace();
             }

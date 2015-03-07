@@ -163,7 +163,7 @@ public class ImageAdder {
         Spannable spannable = spannableFactory.newSpannable(text);
         addSmiles(context, spannable);
 		spannable = addStyling(spannable);
-		spannable = addInternalLinks(spannable, context);
+		//spannable = addInternalLinks(spannable, context);
 
         return spannable;
     }
